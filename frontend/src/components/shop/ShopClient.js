@@ -27,7 +27,7 @@ const EMPTY_FILTERS = {
 const skinTokens = (skin) => String(skin || "").split(/[·,]/).map((s) => s.trim()).filter(Boolean);
 // Pink page background (from StoreLayout) stops partway through the 1st product row,
 // then the page turns cream with a clean edge (like Figma). Applies to ALL category pages. Tweak --cut to move the line.
-const BG_CLASS = "[--cut:280px] lg:[--cut:350px]";
+const BG_CLASS = "[--cut:280px] lg:[--cut:350px] -mb-6 pb-6";
 const BG_STYLE = { backgroundImage: "linear-gradient(to bottom, rgba(252,232,239,0.45) 0px, rgba(247,208,222,0.9) var(--cut), #FBF7F2 var(--cut))" };
 function ShopClient({ products = [], inlineStrips = [], forcedCategory = null }) {
   const [params] = useSearchParams();
