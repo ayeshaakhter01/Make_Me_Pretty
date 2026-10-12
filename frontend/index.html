@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FBF7F2" />
+    <title>Make Me Pretty — Premium Skincare, Made for Bangladesh</title>
+    <meta
+      name="description"
+      content="we wanna make you pretty — gentle, climate-conscious skincare, body, hair & makeup. Small-batch, cruelty-free, delivered across Bangladesh. bKash · Nagad · Card · COD."
+    />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+
+    <!-- Fonts (self-hosted) + Swiper styles + Tailwind CSS -->
+    <link rel="stylesheet" href="css/fonts.css" />
+    <link rel="stylesheet" href="vendor/swiper/swiper.css" />
+    <link rel="stylesheet" href="vendor/swiper/effect-coverflow.css" />
+    <link rel="stylesheet" href="vendor/swiper/effect-fade.css" />
+    <link rel="stylesheet" href="vendor/swiper/pagination.css" />
+    <!-- Pre-generated Tailwind + site CSS: the site works fully offline with just this. -->
+    <link rel="stylesheet" href="css/tailwind.css" />
+
+    <!-- Tailwind Play CDN (optional but on): lets you use ANY new Tailwind class
+         in src/ without regenerating css/tailwind.css. Theme lives in tailwind-config.js.
+         Delete these two <script> lines if you only want the pre-generated CSS. -->
+    <!-- Site CSS source (uses @apply / @layer). Edit here when using the Tailwind CDN. -->
+    <style type="text/tailwindcss">
+:root {
+  /* Fraunces + Jost are self-hosted: see css/fonts.css */
+  --font-fraunces: "Fraunces";
+  --font-jost: "Jost";
+  --ivory: #fbf7f2;
+  --ivory-2: #f6efe7;
+  --pink: #f6dee3;
+  --pink-soft: #faedef;
+  --rose: #b76e79;
+  --rose-deep: #a05762;
+  --gold: #c6a15b;
+  --gold-soft: #efe3ce;
+  --ink: #3b302c;
+  --ink-soft: #7a6a63;
+  --line: #eaddd4;
+  --white: #fffdfb;
+}
+
+/* Animated rotating conic-gradient border for the navbar search field.
+   A single hot-pink line travels around the existing rounded shape on loop. */
+@property --angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes search-glow-rotate {
+  to {
+    --angle: 360deg;
+  }
+}
+
+/* Scroll-reveal entrance for the category cards: fade + subtle rise.
+   Driven as a keyframe animation (not a class-swap transition) so it plays
+   reliably even when the card paints into view the same frame it's triggered. */
+@keyframes card-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* About Us photo frame — a slowly rotating pink gradient border + soft glow +
+   a gentle float, so the picture feels alive. */
+@keyframes about-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
+  }
+}
+/* staggered on-load entrance for the heading + each person block */
+@keyframes about-in {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* long, gentle ease-out-expo so blocks glide in smoothly one after another */
+.about-in {
+  animation: about-in 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* gentle bob (outer) */
+.about-photo-float {
+  animation: about-float 6s ease-in-out infinite;
+}
+
+/* "Share Your Experience" panel — a soft rotating pink gradient border that
+   glows around the whole card. */
+.share-glow-frame {
+  position: relative;
+  padding: 2px;
+  border-radius: 30px;
+  background: conic-gradient(
+    from var(--angle),
+    rgba(255, 158, 203, 0.7),
+    rgba(224, 26, 127, 0.5),
+    rgba(255, 224, 238, 0.85),
+    rgba(255, 95, 162, 0.6),
+    rgba(255, 158, 203, 0.7)
+  );
+  animation: search-glow-rotate 11s linear infinite;
+  box-shadow: 0 0 44px -6px rgba(214, 90, 122, 0.28);
+}
+@media (prefers-reduced-motion: reduce) {
+  .share-glow-frame {
+    animation: none;
+  }
+}
+
+/* Homepage brand strip — seamless infinite right-to-left marquee. The track
+   holds the list twice; sliding -50% loops perfectly. Hover pauses it so
+   brands stay clickable. */
+@keyframes brand-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.brand-marquee {
+  display: flex;
+  width: max-content;
+  animation: brand-marquee 32s linear infinite;
+  will-change: transform;
+}
+.brand-marquee-wrap:hover .brand-marquee {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-marquee {
+    animation: none;
+  }
+}
+/* rotating pink gradient border + glow (inner) */
+.about-photo-frame {
+  position: relative;
+  padding: 3px;
+  border-radius: 30px;
+  background: conic-gradient(
+    from var(--angle),
+    #ff9ecb,
+    #e01a7f,
+    #ffe0ee,
+    #ff5fa2,
+    #ff9ecb
+  );
+  animation: search-glow-rotate 8s linear infinite;
+  box-shadow: 0 22px 55px -14px rgba(224, 26, 127, 0.4);
+}
+.about-photo-inner {
+  overflow: hidden;
+  border-radius: 27px;
+  background: #fff;
+}
+@media (prefers-reduced-motion: reduce) {
+  .about-in,
+  .about-photo-float,
+  .about-photo-frame {
+    animation: none;
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--ivory);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--pink);
+    color: var(--rose-deep);
+  }
+  /* Form controls tuned to the brand */
+  input,
+  select,
+  textarea {
+    @apply w-full rounded-2xl border-[1.5px] border-line bg-cream px-4 py-3 text-sm text-ink outline-none transition-colors;
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--rose);
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--ink-soft);
+    opacity: 0.75;
+  }
+}
+
+@layer components {
+  .field-label {
+    @apply mb-2 block text-xs font-semibold uppercase tracking-[0.1em] text-ink-soft;
+  }
+  /* Navbar search field — soft pink halo tuned to the brand palette */
+  .search-glow {
+    border-color: rgba(183, 110, 121, 0.5) !important;
+    box-shadow: 0 4px 16px -2px rgba(183, 110, 121, 0.28);
+    transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+  .search-glow:hover {
+    box-shadow: 0 0 0 1px rgba(183, 110, 121, 0.32),
+      0 6px 20px -3px rgba(183, 110, 121, 0.3);
+  }
+  .search-glow:focus {
+    border-color: var(--rose) !important;
+    box-shadow: 0 0 0 4px rgba(183, 110, 121, 0.28),
+      0 8px 26px -4px rgba(183, 110, 121, 0.42);
+  }
+  /* Outer wrapper carrying the animated conic-gradient. 2px padding = the only
+     space the rotating line occupies; the inner search box keeps its exact
+     shape, radius, padding and background (double-wrapper technique). */
+  .search-glow-wrap {
+    position: relative;
+    isolation: isolate;
+    padding: 2px;
+    border-radius: 18px; /* input radius (16px) + 2px padding */
+    background: conic-gradient(
+      from var(--angle),
+      transparent 0deg,
+      transparent 295deg,
+      rgba(255, 31, 143, 0.15) 320deg,
+      #ff1f8f 345deg,
+      #ff8cc6 352deg,
+      #ff1f8f 358deg,
+      transparent 360deg
+    );
+    animation: search-glow-rotate 3.5s linear infinite;
+  }
+  /* soft neon bloom that follows the same travelling line */
+  .search-glow-wrap::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--angle),
+      transparent 0deg,
+      transparent 300deg,
+      #ff1f8f 345deg,
+      transparent 360deg
+    );
+    filter: blur(6px);
+    opacity: 0.7;
+    z-index: -1;
+    animation: search-glow-rotate 3.5s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .search-glow-wrap,
+    .search-glow-wrap::before {
+      animation: none;
+    }
+  }
+  /* Category card entrance — applied once the section scrolls into view.
+     Long expo ease-out so cards glide to rest instead of stopping abruptly. */
+  .card-rise {
+    animation: card-rise 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-rise {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* Shimmer skeleton */
+  .skel {
+    background: linear-gradient(
+      90deg,
+      var(--ivory-2) 25%,
+      #fff 50%,
+      var(--ivory-2) 75%
+    );
+    background-size: 800px 100%;
+    @apply animate-shimmer;
+  }
+}
+
+@layer components {
+  /* ---- Premium micro-interactions (site-wide polish) ---- */
+
+  /* Sweeping light that travels across a card image on hover. Add to any
+     overflow-hidden media box; triggers on its own hover or a parent .group. */
+  .card-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .card-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 60%
+    );
+    transform: translateX(-130%);
+    pointer-events: none;
+  }
+  .group:hover .card-shine::after,
+  .card-shine:hover::after {
+    transform: translateX(130%);
+    transition: transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Underline that slides in from the left on hover (uses currentColor, so it
+     works on the dark footer and the light body alike). */
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 0% 1px;
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    transition: background-size 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      color 0.25s ease;
+  }
+  .link-underline:hover {
+    background-size: 100% 1px;
+  }
+
+  /* Hovering any marquee strip pauses it so items stay readable/clickable. */
+  .marquee-wrap:hover .animate-marquee {
+    animation-play-state: paused;
+  }
+}
+
+/* Brand-tinted scrollbar — subtle, rounded, premium. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--ivory-2);
+}
+::-webkit-scrollbar-thumb {
+  background: #d9aab4;
+  border-radius: 999px;
+  border: 2.5px solid var(--ivory-2);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--rose);
+}
+@supports not selector(::-webkit-scrollbar) {
+  html {
+    scrollbar-color: #d9aab4 var(--ivory-2);
+    scrollbar-width: thin;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  /* Hide scrollbar for horizontal chip rows */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Animated add-to-cart bag */
+@keyframes bag-jiggle {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-3px) rotate(-8deg); }
+  55% { transform: translateY(1px) rotate(6deg); }
+  80% { transform: translateY(-1px) rotate(-3deg); }
+}
+@keyframes bag-drop {
+  0% { transform: translateY(-9px) scale(0.4); opacity: 0; }
+  55% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(1px) scale(1); opacity: 1; }
+}
+.bag-anim .bag-body { animation: bag-jiggle 0.55s ease both; }
+.bag-anim .bag-dot { animation: bag-drop 0.45s ease both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+    </style>
+
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script src="tailwind-config.js"></script>
+
+    <script src="config.js"></script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "./vendor/react.js",
+          "react/jsx-runtime": "./vendor/react-jsx-runtime.js",
+          "react-dom": "./vendor/react-dom.js",
+          "react-dom/client": "./vendor/react-dom-client.js",
+          "react-router-dom": "./vendor/react-router-dom.js",
+          "swiper/react": "./vendor/swiper.js",
+          "swiper/modules": "./vendor/swiper.js",
+          "@/": "./src/"
+        }
+      }
+    </script>
+  </head>
+  <body class="font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
