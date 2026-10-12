@@ -1,5 +1,7 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 import { useRef, useState, useEffect } from "react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCoverflow, Autoplay, Pagination } from "swiper/modules";
 import Reveal from "@/components/ui/Reveal.js";
 import { BLOG_POSTS } from "@/data/blogPosts.js";
 
@@ -49,84 +51,73 @@ function BlogReader({ post, onClose }) {
 }
 
 function BlogSection() {
-  const ref = useRef(null);
   const [open, setOpen] = useState(null);
-  const openRef = useRef(null);
-  openRef.current = open;
-  const loop = [...BLOG_POSTS, ...BLOG_POSTS];
+  const swiperRef = useRef(null);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    let raf;
-    let pos = el.scrollLeft;
-    let down = false, hover = false, moved = false, startX = 0, startScroll = 0;
-    const tick = () => {
-      if (!down && !hover && !openRef.current) {
-        pos += 0.6; // scroll speed: bigger number = faster
-        const half = el.scrollWidth / 2;
-        if (pos >= half) pos -= half;
-        el.scrollLeft = pos;
-      } else {
-        pos = el.scrollLeft;
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    const onDown = (e) => { down = true; moved = false; startX = e.pageX; startScroll = el.scrollLeft; el.classList.add("cursor-grabbing"); };
-    const onMove = (e) => {
-      if (!down) return;
-      const dx = e.pageX - startX;
-      if (Math.abs(dx) > 4) moved = true;
-      el.scrollLeft = startScroll - dx;
-    };
-    const onUp = () => { down = false; el.classList.remove("cursor-grabbing"); };
-    const onEnter = () => { hover = true; };
-    const onLeave = () => { hover = false; };
-    const onClickCapture = (e) => { if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; } };
-    el.addEventListener("pointerdown", onDown);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    el.addEventListener("pointerenter", onEnter);
-    el.addEventListener("pointerleave", onLeave);
-    el.addEventListener("click", onClickCapture, true);
-    raf = requestAnimationFrame(tick);
-    return () => {
-      cancelAnimationFrame(raf);
-      el.removeEventListener("pointerdown", onDown);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      el.removeEventListener("pointerenter", onEnter);
-      el.removeEventListener("pointerleave", onLeave);
-      el.removeEventListener("click", onClickCapture, true);
-    };
-  }, []);
+    const s = swiperRef.current;
+    if (!s || !s.autoplay) return;
+    if (open) s.autoplay.stop();
+    else s.autoplay.start();
+  }, [open]);
 
-  return jsxs("section", { className: "mx-auto max-w-[1200px] px-5 py-16", children: [
-    jsxs(Reveal, { className: "mb-8", children: [
+  return jsxs("section", { className: "blog-coverflow mx-auto max-w-[1200px] px-5 py-16", children: [
+    jsxs(Reveal, { className: "text-center", children: [
       jsx("div", { className: "text-xs font-semibold uppercase tracking-[0.2em] text-rose", children: "Tips, tutorials & stories" }),
       jsx("h2", { className: "mt-2 font-serif text-[34px] font-normal", children: "Our Blog" }),
     ] }),
-    jsx("div", {
-      ref,
-      className: "no-scrollbar flex cursor-grab select-none overflow-x-auto pb-3",
-      style: { scrollBehavior: "auto" },
-      children: loop.map((p, i) =>
-        jsxs("button", {
-          onClick: () => setOpen(p),
-          className: "mr-5 flex w-[260px] flex-shrink-0 flex-col overflow-hidden rounded-2xl border border-line bg-white text-left shadow-sm transition-shadow hover:shadow-md sm:w-[290px]",
-          children: [
-            jsx("img", { src: p.image, alt: p.title, draggable: false, className: "h-40 w-full object-cover object-top" }),
-            jsxs("div", { className: "flex flex-1 flex-col p-4", children: [
-              jsx("div", { className: "text-[11px] font-semibold uppercase tracking-widest text-rose", children: p.tag }),
-              jsx("h3", { className: "mt-1 line-clamp-2 font-serif text-lg leading-snug", children: p.title }),
-              jsx("p", { className: "mt-1 line-clamp-2 text-sm text-ink/70", children: p.excerpt }),
-              jsx("span", { className: "mt-3 text-[13px] font-medium text-rose", children: "Read blog \u2192" }),
-            ] }),
-          ],
-        }, p.id + "-" + i)
+    jsx(Swiper, {
+      onSwiper: (s) => { swiperRef.current = s; },
+      style: { marginLeft: "-20px", marginRight: "-20px" },
+      modules: [EffectCoverflow, Autoplay, Pagination],
+      effect: "coverflow",
+      grabCursor: true,
+      centeredSlides: true,
+      loop: true,
+      speed: 700,
+      autoplay: { delay: 2200, disableOnInteraction: false, pauseOnMouseEnter: true },
+      pagination: { clickable: true },
+      slidesPerView: 1.3,
+      coverflowEffect: { rotate: 8, stretch: 0, depth: 120, scale: 0.9, modifier: 1, slideShadows: false },
+      breakpoints: { 640: { slidesPerView: 2.2 }, 1024: { slidesPerView: 3 } },
+      children: BLOG_POSTS.map((p) =>
+        jsx(SwiperSlide, { className: "!h-auto px-1.5 py-5", children:
+          jsxs("button", {
+            onClick: () => setOpen(p),
+            className: "blog-card flex w-full flex-col overflow-hidden rounded-2xl border border-line bg-white text-left shadow-sm",
+            children: [
+              jsx("img", { src: p.image, alt: p.title, draggable: false, className: "h-40 w-full object-cover object-top" }),
+              jsxs("div", { className: "flex flex-1 flex-col p-4", children: [
+                jsx("div", { className: "text-[11px] font-semibold uppercase tracking-widest text-rose", children: p.tag }),
+                jsx("h3", { className: "mt-1 line-clamp-2 font-serif text-lg leading-snug", children: p.title }),
+                jsx("p", { className: "mt-1 line-clamp-2 text-sm text-ink/70", children: p.excerpt }),
+                jsx("span", { className: "mt-3 text-[13px] font-medium text-rose", children: "Read blog \u2192" }),
+              ] }),
+            ],
+          }),
+        }, p.id)
       ),
     }),
     open && jsx(BlogReader, { post: open, onClose: () => setOpen(null) }),
+    jsx("style", { children: `
+      .blog-coverflow .swiper { padding: 56px 0 96px; }
+      .blog-coverflow .swiper-slide { height: auto; display: flex; }
+      .blog-coverflow .blog-card {
+        transition: box-shadow 0.7s ease, border-color 0.7s ease, transform 0.3s ease;
+      }
+      .blog-coverflow .swiper-slide-active .blog-card {
+        border-color: rgba(183, 110, 121, 0.35);
+        box-shadow:
+          0 0 0 1.5px rgba(255, 255, 255, 0.85),
+          0 0 22px 0 rgba(214, 90, 122, 0.30),
+          0 0 56px 6px rgba(214, 90, 122, 0.18),
+          0 18px 50px rgba(126, 44, 64, 0.16);
+      }
+      .blog-coverflow .blog-card:hover { transform: translateY(-4px); }
+      .blog-coverflow .swiper-pagination { bottom: 20px !important; }
+      .blog-coverflow .swiper-pagination-bullet { background: var(--rose); opacity: 0.35; transition: all 0.3s ease; }
+      .blog-coverflow .swiper-pagination-bullet-active { opacity: 1; width: 24px; border-radius: 999px; }
+    ` }),
   ] });
 }
 
