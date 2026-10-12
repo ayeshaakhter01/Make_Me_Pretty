@@ -25,7 +25,11 @@ const EMPTY_FILTERS = {
   skins: /* @__PURE__ */ new Set()
 };
 const skinTokens = (skin) => String(skin || "").split(/[·,]/).map((s) => s.trim()).filter(Boolean);
-function ShopClient({ products = [], inlineStrips = [], fixedCategory = null, fixedOffers = false }) {
+// Pink page background (from StoreLayout) stops partway through the 1st product row,
+// then the page turns cream with a clean edge (like Figma). Applies to ALL category pages. Tweak --cut to move the line.
+const BG_CLASS = "[--cut:280px] lg:[--cut:350px]";
+const BG_STYLE = { backgroundImage: "linear-gradient(to bottom, rgba(252,232,239,0.45) 0px, rgba(247,208,222,0.9) var(--cut), #FBF7F2 var(--cut))" };
+function ShopClient({ products = [], inlineStrips = [], forcedCategory = null }) {
   const [params] = useSearchParams();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
@@ -44,9 +48,9 @@ function ShopClient({ products = [], inlineStrips = [], fixedCategory = null, fi
     return () => document.removeEventListener("mousedown", onDown);
   }, [filtersOpen]);
   useEffect(() => {
-    setCategory(fixedCategory || params.get("category") || "All");
+    setCategory(forcedCategory || params.get("category") || "All");
     setQuery(params.get("q") || "");
-    setOffersOnly(fixedOffers || params.get("offers") === "1");
+    setOffersOnly(params.get("offers") === "1");
     if (params.get("sort")) setSort(params.get("sort"));
     const type = params.get("type");
     const brand = params.get("brand");
@@ -134,7 +138,7 @@ function ShopClient({ products = [], inlineStrips = [], fixedCategory = null, fi
     segs.push({ products: list.slice(cursor), strip: null });
     return segs;
   }, [list, inlineStrips]);
-  return /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[1280px] px-4 py-10 sm:px-6", children: [
+  return /* @__PURE__ */ jsx("div", { className: BG_CLASS, style: BG_STYLE, children: /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[1280px] px-4 py-10 sm:px-6", children: [
     /* @__PURE__ */ jsxs("div", { className: "mb-7 text-center", children: [
       /* @__PURE__ */ jsx("h1", { className: "font-serif text-[clamp(30px,4.5vw,42px)] font-normal", children: heading }),
       /* @__PURE__ */ jsxs("p", { className: "mt-1.5 text-[14px] text-ink-soft", children: [
@@ -212,7 +216,7 @@ function ShopClient({ products = [], inlineStrips = [], fixedCategory = null, fi
       )) }),
       seg.strip && /* @__PURE__ */ jsx(InlineMediaStrip, { strip: seg.strip })
     ] }, si)) })
-  ] });
+  ] }) });
 }
 export {
   ShopClient as default
