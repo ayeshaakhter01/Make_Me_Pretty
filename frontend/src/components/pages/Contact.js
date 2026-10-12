@@ -37,7 +37,7 @@ function Row({ icon, label, value, href }) {
       /* @__PURE__ */ jsx("p", { className: "text-[15px] font-medium text-ink", children: value })
     ] })
   ] });
-  return href ? /* @__PURE__ */ jsx("a", { href, target: href.startsWith("http") ? "_blank" : void 0, rel: "noreferrer", children: inner }) : inner;
+  return href ? /* @__PURE__ */ jsx("a", { className: "block", href, target: href.startsWith("http") ? "_blank" : void 0, rel: "noreferrer", children: inner }) : inner;
 }
 const FIELD = "w-full rounded-2xl border-[1.5px] border-line bg-cream px-4 py-3 text-[14px] text-ink outline-none transition-colors placeholder:text-ink-soft/60 focus:border-rose";
 
