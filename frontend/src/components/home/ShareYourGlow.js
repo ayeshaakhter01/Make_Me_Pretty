@@ -200,7 +200,7 @@ function ShareYourGlow() {
             )
           ] }),
           err && /* @__PURE__ */ jsx("div", { className: "rounded-xl bg-lowstock-bg px-3.5 py-2.5 text-[13px] text-lowstock-text", children: err }),
-          /* @__PURE__ */ jsx(Button, { type: "submit", disabled: busy, className: "w-full", children: busy ? "Sending\u2026" : "Submit my review \u2728" })
+          /* @__PURE__ */ jsx(Button, { type: "submit", disabled: busy, className: "w-full", children: busy ? "Sending\u2026" : "Submit my review" })
         ] })
       ] })
     ] })

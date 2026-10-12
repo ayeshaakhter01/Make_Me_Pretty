@@ -31,7 +31,7 @@ function CartIcon() {
       ),
       children: [
         /* @__PURE__ */ jsx(BagIcon, { animating: pulse, className: "h-6 w-6 text-rose-deep md:h-[19px] md:w-[19px]" }),
-        /* @__PURE__ */ jsx("span", { className: "hidden md:inline", children: "Bag" }),
+        
         /* @__PURE__ */ jsx(
           "span",
           {
