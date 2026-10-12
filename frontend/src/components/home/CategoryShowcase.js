@@ -6,6 +6,7 @@ import { getByCategory } from "@/lib/catalog.js";
 import ProductPlaceholder from "@/components/ui/ProductPlaceholder.js";
 import StaggerReveal from "@/components/ui/StaggerReveal.js";
 import Reveal from "@/components/ui/Reveal.js";
+import { categoryHref } from "@/lib/utils.js";
 function CategoryShowcase() {
   const { data: products } = useProducts();
   return /* @__PURE__ */ jsxs("section", { className: "mx-auto max-w-[1200px] px-5 py-16", children: [
@@ -18,7 +19,7 @@ function CategoryShowcase() {
       return /* @__PURE__ */ jsxs(
         Link,
         {
-          href: `/shop?category=${encodeURIComponent(cat.name)}`,
+          href: categoryHref(cat.name),
           className: "group flex flex-col items-center rounded-3xl border border-line bg-cream p-6 text-center transition-all duration-300 hover:-translate-y-1.5 hover:shadow-soft",
           children: [
             /* @__PURE__ */ jsx(

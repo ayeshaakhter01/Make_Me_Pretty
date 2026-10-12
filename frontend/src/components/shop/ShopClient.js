@@ -25,7 +25,7 @@ const EMPTY_FILTERS = {
   skins: /* @__PURE__ */ new Set()
 };
 const skinTokens = (skin) => String(skin || "").split(/[·,]/).map((s) => s.trim()).filter(Boolean);
-function ShopClient({ products = [], inlineStrips = [] }) {
+function ShopClient({ products = [], inlineStrips = [], fixedCategory = null, fixedOffers = false }) {
   const [params] = useSearchParams();
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
@@ -44,9 +44,9 @@ function ShopClient({ products = [], inlineStrips = [] }) {
     return () => document.removeEventListener("mousedown", onDown);
   }, [filtersOpen]);
   useEffect(() => {
-    setCategory(params.get("category") || "All");
+    setCategory(fixedCategory || params.get("category") || "All");
     setQuery(params.get("q") || "");
-    setOffersOnly(params.get("offers") === "1");
+    setOffersOnly(fixedOffers || params.get("offers") === "1");
     if (params.get("sort")) setSort(params.get("sort"));
     const type = params.get("type");
     const brand = params.get("brand");

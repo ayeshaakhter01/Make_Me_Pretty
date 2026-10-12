@@ -4,7 +4,7 @@ import Link from "@/components/ui/Link.js";
 import { CATEGORIES } from "@/data/categories.js";
 import BrandLogo from "@/components/layout/BrandLogo.js";
 import { useAuth } from "@/context/AuthContext.js";
-import { cx } from "@/lib/utils.js";
+import { cx, categoryHref } from "@/lib/utils.js";
 function MobileNav({ open, onClose }) {
   const [expanded, setExpanded] = useState(null);
   const { isAuthed, user, signOut } = useAuth();
@@ -73,9 +73,7 @@ function MobileNav({ open, onClose }) {
                     children: /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 gap-1 px-3 pb-3", children: cat.types.map((t) => /* @__PURE__ */ jsx(
                       Link,
                       {
-                        href: `/shop?category=${encodeURIComponent(
-                          cat.name
-                        )}&type=${encodeURIComponent(t)}`,
+                        href: categoryHref(cat.name, t),
                         onClick: onClose,
                         className: "rounded-lg px-2 py-2 text-sm text-ink-soft transition-colors hover:bg-pink-soft hover:text-ink",
                         children: t
@@ -101,7 +99,7 @@ function MobileNav({ open, onClose }) {
             /* @__PURE__ */ jsxs(
               Link,
               {
-                href: "/shop?offers=1",
+                href: "/offers",
                 onClick: onClose,
                 className: "mt-1 flex items-center gap-2 px-3 py-3.5 font-serif text-lg text-rose",
                 children: [

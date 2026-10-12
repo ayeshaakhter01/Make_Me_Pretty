@@ -1,5 +1,6 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 import Link from "@/components/ui/Link.js";
+import { categoryHref } from "@/lib/utils.js";
 function MegaMenu({ category, onNavigate }) {
   if (!category) return null;
   return /* @__PURE__ */ jsx("div", { className: "absolute left-1/2 top-full z-50 w-[min(760px,92vw)] -translate-x-1/2 pt-4", children: /* @__PURE__ */ jsx("div", { className: "animate-fadeup overflow-hidden rounded-3xl border border-line bg-cream shadow-menu", children: /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-[1.6fr_1fr]", children: [
@@ -8,9 +9,7 @@ function MegaMenu({ category, onNavigate }) {
       /* @__PURE__ */ jsx("div", { className: "grid grid-cols-2 gap-x-6 gap-y-1", children: category.types.map((type) => /* @__PURE__ */ jsxs(
         Link,
         {
-          href: `/shop?category=${encodeURIComponent(
-            category.name
-          )}&type=${encodeURIComponent(type)}`,
+          href: categoryHref(category.name, type),
           onClick: onNavigate,
           className: "group flex items-center justify-between rounded-xl px-3 py-2.5 text-[15px] text-ink transition-colors hover:bg-pink-soft",
           children: [
@@ -23,7 +22,7 @@ function MegaMenu({ category, onNavigate }) {
       /* @__PURE__ */ jsxs(
         Link,
         {
-          href: `/shop?category=${encodeURIComponent(category.name)}`,
+          href: categoryHref(category.name),
           onClick: onNavigate,
           className: "mt-4 inline-block border-b-[1.5px] border-transparent pb-0.5 text-sm font-medium text-rose transition-colors hover:border-rose",
           children: [

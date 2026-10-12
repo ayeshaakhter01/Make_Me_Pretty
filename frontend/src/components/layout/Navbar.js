@@ -9,7 +9,7 @@ import CartIcon from "@/components/layout/CartIcon.js";
 import WishlistIcon from "@/components/layout/WishlistIcon.js";
 import AccountMenu from "@/components/layout/AccountMenu.js";
 import MobileNav from "@/components/layout/MobileNav.js";
-import { cx } from "@/lib/utils.js";
+import { cx, categoryHref } from "@/lib/utils.js";
 function Navbar() {
   const [activeCat, setActiveCat] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -70,7 +70,7 @@ function Navbar() {
                   CATEGORIES.map((cat) => /* @__PURE__ */ jsx("div", { className: "static", children: /* @__PURE__ */ jsx(
                     Link,
                     {
-                      href: `/shop?category=${encodeURIComponent(cat.name)}`,
+                      href: categoryHref(cat.name),
                       onMouseEnter: () => openCat(cat.name),
                       onFocus: () => openCat(cat.name),
                       className: cx(
@@ -92,7 +92,7 @@ function Navbar() {
                   /* @__PURE__ */ jsxs(
                     Link,
                     {
-                      href: "/shop?offers=1",
+                      href: "/offers",
                       onMouseEnter: closeNow,
                       className: "flex items-center gap-1.5 rounded-full bg-gold-soft px-4 py-1.5 text-sm font-semibold text-[#8A6A2F] transition-colors hover:bg-gold hover:text-white",
                       children: [

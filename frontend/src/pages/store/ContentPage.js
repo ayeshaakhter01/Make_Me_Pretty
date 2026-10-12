@@ -2,6 +2,7 @@ import { jsx, jsxs } from "react/jsx-runtime";
 import { useParams } from "react-router-dom";
 import { CONTENT_SLUGS, CONTENT_PAGES } from "@/data/footer.js";
 import AboutUs from "@/components/pages/AboutUs.js";
+import Contact from "@/components/pages/Contact.js";
 import { useApi } from "@/lib/hooks.js";
 import { useSettings } from "@/context/SettingsContext.js";
 import { useTitle } from "@/lib/useTitle.js";
@@ -19,6 +20,9 @@ function ContentPage() {
   if (!valid) return /* @__PURE__ */ jsx(NotFound, {});
   if (slug === "about-us") {
     return /* @__PURE__ */ jsx(AboutUs, { people, brandName: branding.name, title });
+  }
+  if (slug === "contact") {
+    return /* @__PURE__ */ jsx(Contact, { title });
   }
   const body = (page.body || "").trim();
   return /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[760px] px-5 py-14", children: [
