@@ -30,7 +30,7 @@ function ReviewShowcase({ reviews = [] }) {
         slidesPerView: 1.15,
         coverflowEffect: {
           rotate: 3,
-          stretch: -14,
+          stretch: 12,
           depth: 110,
           scale: 0.92,
           modifier: 1,
