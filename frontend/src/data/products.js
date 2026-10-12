@@ -191,3 +191,20 @@ export const getRelated = (product, limit = 4) =>
 
 export const getByCategory = (category) =>
   PRODUCTS.filter((p) => p.category === category);
+
+
+/* =============================================================================
+   BRAND OF EACH PRODUCT (added by Fayeza)
+   The brand filter and the "Brands we carry" links use the `brand` of a product.
+   Left side = product id, right side = brand name (must match data/brands.js).
+============================================================================= */
+const BRAND_BY_ID = {
+  "1": "Cetaphil", "2": "CeraVe", "3": "The Ordinary", "4": "AXIS-Y", "5": "CeraVe",
+  "6": "Anua", "7": "SKIN1004", "8": "Beauty of Joseon", "9": "I\u2019m from",
+  "10": "Simple", "11": "Cetaphil", "12": "Neutrogena", "13": "Neutrogena",
+  "14": "CARE:NEL", "15": "iUNIK", "16": "DABO", "17": "3W Clinic",
+  "18": "MISSHA", "19": "COSRX", "20": "MISSHA", "21": "3W Clinic",
+};
+PRODUCTS.forEach((p) => {
+  if (BRAND_BY_ID[p.id]) p.brand = BRAND_BY_ID[p.id];
+});

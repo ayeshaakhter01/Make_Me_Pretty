@@ -1,8 +1,10 @@
 import { jsx, jsxs } from "react/jsx-runtime";
+import { useEffect, useState } from "react";
 import Link from "@/components/ui/Link.js";
 import StaggerReveal from "@/components/ui/StaggerReveal.js";
 import { useSettings } from "@/context/SettingsContext.js";
 import { useTitle } from "@/lib/useTitle.js";
+import { BRAND_LOGOS } from "@/data/brands.js";
 function BrandMedia({ b }) {
   if (!b.logo)
     return /* @__PURE__ */ jsx("span", { className: "break-words px-2 text-center font-serif text-[19px] leading-tight text-ink", children: b.brand });
@@ -11,7 +13,18 @@ function BrandMedia({ b }) {
 function BrandsPage() {
   useTitle("Brands");
   const { footer, loaded } = useSettings();
-  const brands = footer.brandLogos || [];
+  /* LOGOS: same idea as the homepage strip. BRAND_LOGOS (data/brands.js) lists a
+     picture for each brand; only the pictures that really exist are used, the
+     others keep showing the brand name as text. */
+  const [loadedLogos, setLoadedLogos] = useState({});
+  useEffect(() => {
+    Object.entries(BRAND_LOGOS).forEach(([name, src]) => {
+      const img = new Image();
+      img.onload = () => setLoadedLogos((old) => ({ ...old, [name]: src }));
+      img.src = src;
+    });
+  }, []);
+  const brands = (footer.brandLogos || []).map((b) => ({ ...b, logo: b.logo || loadedLogos[b.brand] || "" }));
   return /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[1200px] px-5 py-14", children: [
     /* @__PURE__ */ jsxs("div", { className: "mb-9 text-center", children: [
       /* @__PURE__ */ jsx("div", { className: "text-xs font-semibold uppercase tracking-[0.2em] text-rose", children: "Names you can trust" }),
