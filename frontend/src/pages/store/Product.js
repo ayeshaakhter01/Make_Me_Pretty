@@ -1,5 +1,6 @@
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import Link from "@/components/ui/Link.js";
+import { TruckFastIcon, CreditCardIcon } from "@/components/promo/InfoIcons.js";
 import { useParams } from "react-router-dom";
 import { useProducts } from "@/lib/hooks.js";
 import { findProduct, getRelated, findPromoCoupon } from "@/lib/catalog.js";
@@ -81,9 +82,11 @@ function ProductPage() {
         /* @__PURE__ */ jsx("div", { className: "mb-7", children: /* @__PURE__ */ jsx(IngredientTags, { ingredients: product.ing }) }),
         /* @__PURE__ */ jsx(AddToCartPanel, { product }),
         /* @__PURE__ */ jsxs("div", { className: "mt-6 rounded-card border border-line bg-cream p-5 text-[13.5px] leading-[1.8] text-ink-soft", children: [
-          "\u{1F69A} Delivery in 1\u20132 days inside Dhaka \xB7 2\u20134 days nationwide",
+          /* @__PURE__ */ jsx(TruckFastIcon, {}),
+          "Delivery in 1\u20132 days inside Chittagong \xB7 2\u20134 days nationwide",
           /* @__PURE__ */ jsx("br", {}),
-          "\u{1F4B3} bKash \xB7 Nagad \xB7 Cards \xB7 Cash on Delivery",
+          /* @__PURE__ */ jsx(CreditCardIcon, {}),
+          "bKash \xB7 Cards \xB7 Cash on Delivery",
           /* @__PURE__ */ jsx("br", {}),
           "\u21A9 7-day easy returns on unopened products",
           promoCoupon && /* @__PURE__ */ jsxs(Fragment, { children: [

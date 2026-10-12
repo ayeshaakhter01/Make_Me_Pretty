@@ -2,13 +2,19 @@ import { jsx, jsxs } from "react/jsx-runtime";
 import Link from "@/components/ui/Link.js";
 import SocialIcons from "@/components/layout/SocialIcons.js";
 import StaggerReveal from "@/components/ui/StaggerReveal.js";
-const PAYMENT_FALLBACK = ["bKash", "Nagad", "Visa", "Mastercard", "COD"];
+import { SOCIAL_URLS_DEFAULT } from "@/data/footer.js";
+const PAYMENT_FALLBACK = [
+  { id: "bkash", name: "bKash", logo: "images/payments/bkash.svg"},
+  { id: "visa", name: "Visa", logo: "images/payments/visa.png"},
+  { id: "cod", name: "Cash on Delivery", logo: "images/payments/cod.png"}
+];
 function ColTitle({ children }) {
   return /* @__PURE__ */ jsx("div", { className: "mb-3.5 text-[11px] uppercase tracking-wide2 text-[#C9BDB6]", children });
 }
 function Footer({ branding = {}, footer = {} }) {
   const name = branding.name || "Make Me Pretty";
   const { paymentLogos = [], social = {}, help = [], policy = [] } = footer;
+  const socialLinks = Object.keys(social).length > 0 ? social : SOCIAL_URLS_DEFAULT;
   return /* @__PURE__ */ jsx("footer", { className: "mt-6 bg-ink text-ivory", children: /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[1200px] px-5 py-10", children: [
     /* @__PURE__ */ jsxs(
       StaggerReveal,
@@ -28,15 +34,15 @@ function Footer({ branding = {}, footer = {} }) {
             ) : /* @__PURE__ */ jsx("div", { className: "mb-2 font-serif text-2xl tracking-brand", children: name }),
             /* @__PURE__ */ jsx("p", { className: "mb-6 font-serif italic text-pink", children: branding.tagline || "we wanna make you pretty" }),
             /* @__PURE__ */ jsx(ColTitle, { children: "Payments accepted" }),
-            paymentLogos.length > 0 ? /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2", children: paymentLogos.map((p) => /* @__PURE__ */ jsx(
+            /* @__PURE__ */ jsx("div", { className: "flex flex-wrap items-center gap-2", children: (paymentLogos.length > 0 ? paymentLogos : PAYMENT_FALLBACK).map((p) => /* @__PURE__ */ jsx(
               "span",
               {
                 title: p.name,
                 className: "inline-flex items-center rounded-md bg-white p-1.5",
-                children: /* @__PURE__ */ jsx("img", { src: p.logo, alt: p.name, className: "h-6 w-auto object-contain" })
+                children: /* @__PURE__ */ jsx("img", { src: p.logo, alt: p.name, className: "h-8 w-auto object-contain" })
               },
               p.id
-            )) }) : /* @__PURE__ */ jsx("div", { className: "flex flex-wrap gap-2", children: PAYMENT_FALLBACK.map((p) => /* @__PURE__ */ jsx("span", { className: "rounded-lg border border-[#5A4F49] px-3 py-1.5 text-xs", children: p }, p)) })
+            )) })
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
             /* @__PURE__ */ jsx(ColTitle, { children: "Help" }),
@@ -62,7 +68,7 @@ function Footer({ branding = {}, footer = {} }) {
           ] }),
           /* @__PURE__ */ jsxs("div", { children: [
             /* @__PURE__ */ jsx(ColTitle, { children: "Social media" }),
-            /* @__PURE__ */ jsx(SocialIcons, { social })
+            /* @__PURE__ */ jsx(SocialIcons, { social: socialLinks })
           ] })
         ]
       }
