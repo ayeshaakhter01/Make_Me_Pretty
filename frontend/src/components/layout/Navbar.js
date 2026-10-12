@@ -10,6 +10,11 @@ import WishlistIcon from "@/components/layout/WishlistIcon.js";
 import AccountMenu from "@/components/layout/AccountMenu.js";
 import MobileNav from "@/components/layout/MobileNav.js";
 import { cx, categoryHref } from "@/lib/utils.js";
+
+// ====== Navbar-এর উচ্চতা এখানে বদলাবে (phone | desktop) ======
+const NAVBAR_HEIGHT = "h-16";
+// ============================================================
+
 function Navbar() {
   const [activeCat, setActiveCat] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -43,7 +48,7 @@ function Navbar() {
           scrolled && "shadow-[0_14px_36px_-18px_rgba(59,48,44,0.3)]"
         ),
         children: [
-          /* @__PURE__ */ jsxs("div", { className: "relative mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-5", children: [
+          /* @__PURE__ */ jsxs("div", { className: cx("relative flex w-full items-center gap-4 px-3 lg:px-5", NAVBAR_HEIGHT), children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
               /* @__PURE__ */ jsxs(
                 "button",
@@ -64,7 +69,7 @@ function Navbar() {
             /* @__PURE__ */ jsxs(
               "nav",
               {
-                className: "hidden items-center gap-7 md:flex",
+                className: "hidden items-center gap-4 whitespace-nowrap md:flex lg:ml-4 lg:gap-5",
                 onMouseLeave: scheduleClose,
                 children: [
                   CATEGORIES.map((cat) => /* @__PURE__ */ jsx("div", { className: "static", children: /* @__PURE__ */ jsx(
@@ -104,8 +109,8 @@ function Navbar() {
                 ]
               }
             ),
-            /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3 sm:gap-4", children: [
-              /* @__PURE__ */ jsx("div", { className: "hidden w-52 xl:block", children: /* @__PURE__ */ jsx(SearchBar, { compact: true }) }),
+            /* @__PURE__ */ jsxs("div", { className: "flex flex-1 items-center justify-end gap-3 sm:gap-5", children: [
+              /* @__PURE__ */ jsx("div", { className: "hidden flex-1 xl:block xl:max-w-[800px]", children: /* @__PURE__ */ jsx(SearchBar, { compact: true }) }),
               /* @__PURE__ */ jsx("div", { className: "hidden md:block", children: /* @__PURE__ */ jsx(WishlistIcon, {}) }),
               /* @__PURE__ */ jsx(CartIcon, {}),
               /* @__PURE__ */ jsx(AccountMenu, {})
