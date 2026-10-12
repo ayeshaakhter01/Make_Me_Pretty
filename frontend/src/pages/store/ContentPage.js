@@ -21,9 +21,7 @@ function ContentPage() {
   if (slug === "about-us") {
     return /* @__PURE__ */ jsx(AboutUs, { people, brandName: branding.name, title });
   }
-  if (slug === "contact") {
-    return /* @__PURE__ */ jsx(Contact, { title });
-  }
+  if (slug === "contact") return /* @__PURE__ */ jsx(Contact, { title });
   const body = (page.body || "").trim();
   return /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[760px] px-5 py-14", children: [
     /* @__PURE__ */ jsx("h1", { className: "font-serif text-[clamp(28px,4.5vw,40px)] font-normal", children: title }),
