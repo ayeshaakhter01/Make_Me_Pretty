@@ -1,7 +1,8 @@
 import { jsx, jsxs } from "react/jsx-runtime";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "@/components/ui/Link.js";
 import Reveal from "@/components/ui/Reveal.js";
+import { BRAND_LOGOS } from "@/data/brands.js";
 function BrandTile({ b }) {
   return /* @__PURE__ */ jsxs(
     Link,
@@ -20,6 +21,18 @@ function BrandTile({ b }) {
 }
 function BrandShowcase({ brands = [] }) {
   const ref = useRef(null);
+  /* LOGOS: BRAND_LOGOS (in data/brands.js) lists a picture file for each brand.
+     We try to load every file. Only the ones that really exist are used, so a
+     brand without a picture simply keeps showing its name as text. */
+  const [loadedLogos, setLoadedLogos] = useState({});
+  useEffect(() => {
+    Object.entries(BRAND_LOGOS).forEach(([name, src]) => {
+      const img = new Image();
+      img.onload = () => setLoadedLogos((old) => ({ ...old, [name]: src }));
+      img.src = src;
+    });
+  }, []);
+  const shown = brands.map((b) => ({ ...b, logo: b.logo || loadedLogos[b.brand] || "" }));
   const s = useRef({ down: false, moved: false, startX: 0, startScroll: 0 });
   useEffect(() => {
     const el = ref.current;
@@ -75,7 +88,7 @@ function BrandShowcase({ brands = [] }) {
     };
   }, [brands.length]);
   if (brands.length === 0) return null;
-  const loop = [...brands, ...brands];
+  const loop = [...shown, ...shown];
   return /* @__PURE__ */ jsxs("section", { className: "py-16", children: [
     /* @__PURE__ */ jsxs(Reveal, { className: "mx-auto mb-8 flex max-w-[1200px] flex-wrap items-end justify-between gap-3 px-5", children: [
       /* @__PURE__ */ jsxs("div", { children: [
