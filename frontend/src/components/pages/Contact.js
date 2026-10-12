@@ -59,7 +59,7 @@ function Contact({ title = "Contact" }) {
   };
   return /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[1100px] px-4 py-14 sm:px-6", children: [
     /* @__PURE__ */ jsxs("div", { className: "mb-10 text-center", children: [
-      /* @__PURE__ */ jsx("h1", { className: "font-serif text-[clamp(30px,4.5vw,42px)] font-normal", children: title }),
+      /* @__PURE__ */ jsx("h1", { className: "font-serif text-[clamp(30px,4.5vw,42px)] font-normal", children: "Contact Us" }),
       /* @__PURE__ */ jsx("p", { className: "mt-2 text-[14px] text-ink-soft", children: "Questions about an order or a product? We’d love to hear from you." })
     ] }),
     /* @__PURE__ */ jsxs("div", { className: "grid gap-6 rounded-[28px] border border-line bg-cream/90 p-6 shadow-menu backdrop-blur sm:p-10 md:grid-cols-2 md:gap-12", children: [
