@@ -1,5 +1,15 @@
 import { jsx, jsxs } from "react/jsx-runtime";
+import { useState } from "react";
 import { cx } from "@/lib/utils.js";
+
+// ====== ডেমো কনটেন্ট: backend থেকে কোনো person না এলে এটা দেখাবে ======
+const SHOW_DEMO_WHEN_EMPTY = true;
+const STORY = "As the Founder of Make Me Pretty, my vision has always been simple \u2014 to make authentic skincare accessible and trustworthy for everyone. What started as a small dream in June 2021 has grown with the love and trust of our customers. Every order we send carries care, honesty, and gratitude. Thank you for being part of our journey \u{1F49C}";
+const DEMO_PEOPLE = [
+  { id: "demo-1", name: "Ayesha Akhter", text: STORY, media: "assets/about/ayesha.jpg", mediaType: "image" },
+  { id: "demo-2", name: "MD Sadman Hasan", text: STORY, media: "assets/about/sadman.jpg", mediaType: "image" }
+];
+// ====================================================================
 function Brush() {
   return /* @__PURE__ */ jsxs(
     "svg",
@@ -19,10 +29,16 @@ function Brush() {
     }
   );
 }
-function PhotoFrame({ p }) {
-  return /* @__PURE__ */ jsx("div", { className: "about-photo-float", children: /* @__PURE__ */ jsx("div", { className: "about-photo-frame", children: /* @__PURE__ */ jsx("div", { className: "about-photo-inner aspect-[4/3] w-full", children: p.mediaType === "video" ? /* @__PURE__ */ jsx("video", { src: p.media, muted: true, loop: true, autoPlay: true, playsInline: true, className: "h-full w-full object-cover" }) : /* @__PURE__ */ jsx("img", { src: p.media, alt: p.name, className: "h-full w-full object-cover" }) }) }) });
+function PhotoPlaceholder() {
+  return /* @__PURE__ */ jsx("div", { className: "flex h-full w-full items-center justify-center text-[clamp(14px,2vw,20px)] font-bold tracking-[0.08em] text-white/85", style: { background: "#47788c" }, children: "PHOTO" });
 }
-function AboutUs({ people = [], brandName = "Make Me Pretty", title }) {
+function PhotoFrame({ p }) {
+  const [failed, setFailed] = useState(false);
+  const showMedia = p.media && !failed;
+  return /* @__PURE__ */ jsx("div", { className: "about-photo-float", children: /* @__PURE__ */ jsx("div", { className: "about-photo-frame", children: /* @__PURE__ */ jsx("div", { className: "about-photo-inner aspect-[4/3] w-full", children: !showMedia ? /* @__PURE__ */ jsx(PhotoPlaceholder, {}) : p.mediaType === "video" ? /* @__PURE__ */ jsx("video", { src: p.media, muted: true, loop: true, autoPlay: true, playsInline: true, onError: () => setFailed(true), className: "h-full w-full object-cover" }) : /* @__PURE__ */ jsx("img", { src: p.media, alt: p.name, onError: () => setFailed(true), className: "h-full w-full object-cover" }) }) }) });
+}
+function AboutUs({ people: peopleProp = [], brandName = "Make Me Pretty", title }) {
+  const people = peopleProp.length === 0 && SHOW_DEMO_WHEN_EMPTY ? DEMO_PEOPLE : peopleProp;
   return /* @__PURE__ */ jsxs("div", { className: "mx-auto max-w-[1000px] overflow-x-clip px-5 py-14 sm:py-16", children: [
     /* @__PURE__ */ jsxs("div", { className: "about-in text-center", style: { animationDelay: "0.1s" }, children: [
       /* @__PURE__ */ jsx("h1", { className: "font-serif text-[clamp(28px,5.5vw,48px)] font-normal", children: title || `The People Behind ${brandName}` }),

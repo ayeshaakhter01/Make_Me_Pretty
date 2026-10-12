@@ -9,10 +9,10 @@ function WishlistIcon() {
     {
       href: "/wishlist",
       "aria-label": `Wishlist, ${count} saved`,
-      className: "relative flex h-9 w-9 items-center justify-center rounded-full text-[17px] text-ink transition-colors hover:text-rose",
+      className: "relative flex items-center whitespace-nowrap rounded-full bg-pink-soft px-4 py-2.5 text-[13px] font-semibold text-rose-deep ring-1 ring-inset ring-rose/25 transition-all hover:bg-pink hover:ring-rose/50",
       children: [
-        "\u2661",
-        count > 0 && /* @__PURE__ */ jsx("span", { className: "absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose px-1 text-[10px] font-semibold text-white", children: count })
+        "Wishlist",
+        count > 0 && /* @__PURE__ */ jsx("span", { className: "absolute -right-1.5 -top-1.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose px-1 text-[10px] font-semibold leading-none text-white", children: count })
       ]
     }
   );
