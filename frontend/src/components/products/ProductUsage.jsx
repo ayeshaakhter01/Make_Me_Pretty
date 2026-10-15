@@ -2,7 +2,7 @@ import { getUsageGuide } from '../../data/usageGuides.js'
 
 export default function ProductUsage({ product }) {
   const guide = getUsageGuide(product)
-  return <section aria-labelledby="product-usage-title" className="mx-auto max-w-[1200px]">
+  return <section aria-labelledby="product-usage-title" className="mx-auto max-w-300">
     <div className="mb-6 flex flex-wrap items-baseline justify-between gap-2">
       <h2 id="product-usage-title" className="font-serif text-[28px] font-normal">How to use</h2>
       <span className="rounded-full bg-gold-soft px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8a6a2f]">{guide.when}</span>

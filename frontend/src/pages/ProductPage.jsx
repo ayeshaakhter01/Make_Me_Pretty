@@ -47,7 +47,7 @@ export default function ProductPage() {
           <div className="mt-6"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft">Best for · {product.skin}</p><div className="mt-3 flex flex-wrap gap-2">{product.ingredients.map((ingredient) => <span key={ingredient} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-cream px-3.5 py-2 text-[12px] text-ink-soft"><span aria-hidden="true" className="text-[11px] text-rose">✿</span>{ingredient}</span>)}</div></div>
           <div className="mt-7 flex flex-wrap items-stretch gap-3">
             <div className="flex items-center gap-3 rounded-full border-[1.5px] border-line px-4"><button type="button" aria-label="Decrease quantity" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="text-lg text-ink-soft hover:text-rose">−</button><span className="min-w-5 text-center text-sm">{quantity}</span><button type="button" aria-label="Increase quantity" onClick={() => setQuantity((current) => Math.min(product.stock, current + 1))} className="text-lg text-ink-soft hover:text-rose">+</button></div>
-            <button type="button" onClick={handleAdd} className={`inline-flex flex-1 basis-48 items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold tracking-[0.03em] text-white transition-all ${added ? 'bg-gold' : 'bg-rose hover:-translate-y-0.5 hover:bg-rose-deep'}`}><Icon name="bag" className="size-[17px]"/>{added ? 'Added' : `Add to Bag — ${money(product.price * quantity)}`}</button>
+            <button type="button" onClick={handleAdd} className={`inline-flex flex-1 basis-48 items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-semibold tracking-[0.03em] text-white transition-all ${added ? 'bg-gold' : 'bg-rose hover:-translate-y-0.5 hover:bg-rose-deep'}`}><Icon name="bag" className="size-4.25"/>{added ? 'Added' : `Add to Bag — ${money(product.price * quantity)}`}</button>
             <button type="button" onClick={() => toggleWishlist(product)} aria-pressed={saved} className="inline-flex items-center gap-2 rounded-full border-[1.5px] border-ink px-5 py-3.5 text-sm transition-colors hover:bg-ink hover:text-ivory">{saved ? '♥ Saved' : '♡ Save'}</button>
           </div>
           <div className="mt-7"><ProductBenefits/></div>
@@ -56,7 +56,7 @@ export default function ProductPage() {
     </PageContainer>
     <PageContainer className="mt-16 pb-0 pt-0"><ProductUsage product={product}/></PageContainer>
     <PageContainer className="mt-16 pb-0 pt-0">
-      <section aria-labelledby="product-reviews-title" className="mx-auto max-w-[1200px]">
+      <section aria-labelledby="product-reviews-title" className="mx-auto max-w-300">
         <h2 id="product-reviews-title" className="mb-6 font-serif text-[28px] font-normal">What customers say</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(myReviews[product.id] || []).map((review, index) => <article key={`mine-${index}`} className="rounded-[22px] border border-rose/30 bg-cream p-6">
@@ -74,6 +74,6 @@ export default function ProductPage() {
         <ProductReviewForm key={product.id} product={product} onSubmit={(review) => setMyReviews((current) => ({ ...current, [product.id]: [review, ...(current[product.id] || [])] }))}/>
       </section>
     </PageContainer>
-    {related.length > 0 && <PageContainer className="mt-16 max-w-[1200px] pb-14 pt-0"><h2 className="mb-6 font-serif text-[28px] font-normal">Complete the ritual</h2><ProductGrid products={related}/></PageContainer>}
+    {related.length > 0 && <PageContainer className="mt-16 max-w-300 pb-14 pt-0"><h2 className="mb-6 font-serif text-[28px] font-normal">Complete the ritual</h2><ProductGrid products={related}/></PageContainer>}
   </>
 }
