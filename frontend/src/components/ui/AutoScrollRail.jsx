@@ -26,22 +26,31 @@ export default function AutoScrollRail({ items, renderItem, getKey, className = 
 
   function startDrag(event) {
     if (event.button !== 0) return
-    dragRef.current = { active: true, startX: event.clientX, startScroll: event.currentTarget.scrollLeft, moved: false }
-    event.currentTarget.setPointerCapture(event.pointerId)
-    event.currentTarget.classList.add('cursor-grabbing')
+    dragRef.current = { active: true, startX: event.clientX, startScroll: event.currentTarget.scrollLeft, moved: false, captured: false }
   }
 
   function moveDrag(event) {
     const drag = dragRef.current
     if (!drag.active) return
     const distance = event.clientX - drag.startX
-    if (Math.abs(distance) > 4) drag.moved = true
-    event.currentTarget.scrollLeft = drag.startScroll - distance
+    if (!drag.moved && Math.abs(distance) > 4) {
+      // Capture the pointer only once a real drag starts, so plain clicks still reach the product links.
+      drag.moved = true
+      drag.captured = true
+      event.currentTarget.setPointerCapture(event.pointerId)
+      event.currentTarget.classList.add('cursor-grabbing')
+    }
+    if (drag.moved) event.currentTarget.scrollLeft = drag.startScroll - distance
   }
 
   function endDrag(event) {
-    dragRef.current.active = false
+    const drag = dragRef.current
+    if (drag.captured && event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+    drag.active = false
+    drag.captured = false
     event.currentTarget.classList.remove('cursor-grabbing')
+    // If the pointer was released after a drag, the click that follows is swallowed once by blockDragClick.
+    if (drag.moved) window.setTimeout(() => { dragRef.current.moved = false }, 0)
   }
 
   function blockDragClick(event) {
