@@ -68,7 +68,7 @@ export default function ProductReviewForm({ product, onSubmit }) {
 
     return <>
         <div className="mt-8 flex justify-center">
-            <button type="button" onClick={() => setOpen(true)} className="group inline-flex w-full max-w-180 items-center justify-center gap-2 rounded-full bg-ink px-7 py-3.5 text-sm font-medium text-ivory transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(59,48,44,.18)]">Write a review <span className="transition-transform group-hover:translate-x-1">→</span></button>
+        <button type="button" onClick={() => setOpen(true)} className="group inline-flex w-full max-w-155 items-center justify-center gap-2 rounded-full bg-ink px-7 py-3.5 text-sm font-medium text-ivory transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_40px_rgba(59,48,44,.18)]">Write a review <span className="transition-transform group-hover:translate-x-1">→</span></button>
         </div>
         {open && <div className="fixed inset-0 z-200 flex items-center justify-center overflow-y-auto bg-ink/55 p-4 backdrop-blur-lg" onClick={close}>
             <section role="dialog" aria-modal="true" aria-labelledby="write-review-title" onClick={(event) => event.stopPropagation()} className="relative my-6 max-h-[92vh] w-[min(94vw,620px)] overflow-y-auto rounded-[28px] border border-white/70 bg-white/90 p-6 shadow-2xl backdrop-blur-md sm:p-9">
