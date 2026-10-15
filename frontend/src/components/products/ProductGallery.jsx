@@ -20,7 +20,7 @@ export default function ProductGallery({ product }) {
     setOrigin(`${((event.clientX - bounds.left) / bounds.width) * 100}% ${((event.clientY - bounds.top) / bounds.height) * 100}%`)
   }
 
-  return <div>
+  return <div className="mx-auto w-full max-w-[460px]">
     <div ref={imageRef} onMouseEnter={() => setHoverZoomed(true)} onMouseMove={updateZoomOrigin} onMouseLeave={() => { setHoverZoomed(false); setZoomed(false) }} onClick={() => { if (hoverZoomed) { setHoverZoomed(false); setZoomed(false) } else setZoomed((value) => !value) }} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setZoomed((value) => !value) } }} role="button" tabIndex={0} className={`gallery-zoom relative aspect-square cursor-zoom-in overflow-hidden rounded-3xl border border-line ${zoomed || hoverZoomed ? 'is-zoomed' : ''}`} style={{ cursor: zoomed || hoverZoomed ? 'zoom-out' : 'zoom-in', '--zoom-origin': origin }} aria-label="Product image. Hover to zoom, click to reset.">
       <ProductArtwork product={currentProduct} size={1.7} className="size-full transition-transform duration-500 ease-out" />
       <span className="pointer-events-none absolute bottom-4 right-4 rounded-full bg-white/75 px-3 py-1 text-[10.5px] uppercase tracking-[0.1em] text-ink-soft backdrop-blur">{zoomed || hoverZoomed ? 'Move away / Click to reset' : 'Hover / Click to zoom'}</span>
