@@ -70,8 +70,8 @@ export const SEED_BANNERS = [
 ]
 
 export const SEED_ADMIN_REVIEWS = [
-  { id: 'r1', name: 'Sadia M.', product: 'Silk Barrier Moisturizer', rating: 5, text: 'Absolutely lives up to the hype. My skin drinks it up.', status: 'Approved', image: '' },
-  { id: 'r2', name: 'Rimi H.', product: 'SPF 50 Silk Shield', rating: 4, text: 'Light texture, no white cast. Wish the bottle was bigger.', status: 'Pending', image: '' },
+  { id: 'r1', name: 'Sadia M.', product: 'Silk Barrier Moisturizer', rating: 5, text: 'Absolutely lives up to the hype. My skin drinks it up.', status: 'Approved', image: '/images/reviews/review1.jpg' },
+  { id: 'r2', name: 'Rimi H.', product: 'SPF 50 Silk Shield', rating: 4, text: 'Light texture, no white cast. Wish the bottle was bigger.', status: 'Pending', image: '/images/reviews/review2.jpg' },
   { id: 'r3', name: 'Tania B.', product: 'Niacinamide 10% Serum', rating: 5, text: 'My pores look smaller after three weeks.', status: 'Pending', image: '' },
   { id: 'r4', name: 'Anika S.', product: 'Hydra Mist Toner', rating: 2, text: 'Not for me, felt sticky.', status: 'Rejected', image: '' },
 ]
