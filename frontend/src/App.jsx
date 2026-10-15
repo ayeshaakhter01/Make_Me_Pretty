@@ -15,6 +15,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage.jsx'))
 const ComboPage = lazy(() => import('./pages/ComboPage.jsx'))
 const TrackPage = lazy(() => import('./pages/TrackPage.jsx'))
 const AccountPage = lazy(() => import('./pages/AccountPage.jsx'))
+const AdminApp = lazy(() => import('./pages/admin/AdminApp.jsx'))
 const SkinAdvisorPage = lazy(() => import('./pages/SkinAdvisorPage.jsx'))
 
 function RouteLoading() {
@@ -25,6 +26,7 @@ export default function App() {
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>
+        <Route path="admin" element={<AdminApp />} />
         <Route element={<SiteLayout />}>
           <Route index element={<HomePage />} />
           <Route path="shop" element={<ShopPage />} />
