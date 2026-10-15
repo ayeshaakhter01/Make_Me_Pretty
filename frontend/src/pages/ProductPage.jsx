@@ -3,6 +3,8 @@ import { useState } from 'react'
 import ProductGallery from '../components/products/ProductGallery.jsx'
 import ProductGrid from '../components/products/ProductGrid.jsx'
 import ProductBenefits from '../components/products/ProductBenefits.jsx'
+import ProductUsage from '../components/products/ProductUsage.jsx'
+import ProductReviewForm from '../components/products/ProductReviewForm.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import PageContainer from '../components/ui/PageContainer.jsx'
 import { useCart } from '../context/useCart.js'
@@ -17,6 +19,7 @@ export default function ProductPage() {
   const { addItem, toggleWishlist, isWishlisted } = useCart()
   const [quantity, setQuantity] = useState(1)
   const [added, setAdded] = useState(false)
+  const [myReviews, setMyReviews] = useState({})
 
   if (!product) return <PageContainer className="py-24 text-center"><h1 className="font-display text-3xl">We couldn’t find that little lovely.</h1><Link to="/shop" className="mt-5 inline-block text-rose-deep underline">Back to the shop</Link></PageContainer>
 
@@ -51,16 +54,24 @@ export default function ProductPage() {
         </section>
       </div>
     </PageContainer>
+    <PageContainer className="mt-16 pb-0 pt-0"><ProductUsage product={product}/></PageContainer>
     <PageContainer className="mt-16 pb-0 pt-0">
       <section aria-labelledby="product-reviews-title" className="mx-auto max-w-[1200px]">
         <h2 id="product-reviews-title" className="mb-6 font-serif text-[28px] font-normal">What customers say</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {(myReviews[product.id] || []).map((review, index) => <article key={`mine-${index}`} className="rounded-[22px] border border-rose/30 bg-cream p-6">
+            <p className="text-[14px] tracking-[0.12em] text-gold" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}<span className="text-line">{'★'.repeat(5 - review.rating)}</span></p>
+            {review.title && <p className="mt-2 text-[14.5px] font-medium">{review.title}</p>}
+            <p className="my-3 text-[14.5px] leading-relaxed text-ink">“{review.text}”</p>
+            <p className="text-[13px] text-ink-soft">{review.name} · <span className="text-rose">Pending approval</span></p>
+          </article>)}
           {PRODUCT_REVIEWS.map((review) => <article key={review.name} className="rounded-[22px] border border-line bg-cream p-6">
             <p className="text-[14px] tracking-[0.12em] text-gold" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{review.rating < 5 && <span className="text-line">{'★'.repeat(5 - review.rating)}</span>}</p>
             <p className="my-3 text-[14.5px] leading-relaxed text-ink">“{review.text}”</p>
             <p className="text-[13px] text-ink-soft">{review.name} · <span className="text-gold">✓ Verified purchase</span></p>
           </article>)}
         </div>
+        <ProductReviewForm key={product.id} product={product} onSubmit={(review) => setMyReviews((current) => ({ ...current, [product.id]: [review, ...(current[product.id] || [])] }))}/>
       </section>
     </PageContainer>
     {related.length > 0 && <PageContainer className="mt-16 max-w-[1200px] pb-14 pt-0"><h2 className="mb-6 font-serif text-[28px] font-normal">Complete the ritual</h2><ProductGrid products={related}/></PageContainer>}
