@@ -15,6 +15,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage.jsx'))
 const ComboPage = lazy(() => import('./pages/ComboPage.jsx'))
 const TrackPage = lazy(() => import('./pages/TrackPage.jsx'))
 const AccountPage = lazy(() => import('./pages/AccountPage.jsx'))
+const SkinAdvisorPage = lazy(() => import('./pages/SkinAdvisorPage.jsx'))
 
 function RouteLoading() {
   return <div className="mx-auto max-w-7xl px-5 py-24 text-center text-muted">Loading your beauty essentials…</div>
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="combo" element={<ComboPage />} />
           <Route path="combo/:comboId" element={<ComboPage />} />
           <Route path="track" element={<TrackPage />} />
+          <Route path="skin-advisor" element={<SkinAdvisorPage />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="cart" element={<CartPage />} />
