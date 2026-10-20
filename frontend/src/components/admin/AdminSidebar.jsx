@@ -8,6 +8,7 @@ export const ADMIN_TABS = [
   { id: 'Analytics', icon: '/icons/admin/analytics.png' },
   { id: 'Coupons', icon: '/icons/admin/coupons.png' },
   { id: 'Banners', icon: '/icons/admin/banners.png' },
+  { id: 'Footer', icon: '/icons/admin/footer.png' },
   { id: 'Reviews', icon: '/icons/admin/reviews.png' },
   { id: 'Blog', icon: '/icons/admin/blog.png' },
   { id: 'Users', icon: '/icons/admin/users.png' },

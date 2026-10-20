@@ -63,12 +63,6 @@ export const SEED_USERS = [
   { id: 'u6', name: 'Rafiq Ahmed', email: 'rider@makemepretty.com', phone: '01711000111', address: '', role: 'Delivery Partner', joined: 'May 20', orders: 0 },
 ]
 
-export const SEED_BANNERS = [
-  { id: 'b1', title: 'Monsoon Glow Sale', text: 'All serums at special prices', link: '/offers', active: true },
-  { id: 'b2', title: 'Free delivery over ৳3,000', text: 'Nationwide, every order', link: '/shop', active: true },
-  { id: 'b3', title: 'New in Makeup', text: 'Colour for every mood', link: '/makeup', active: false },
-]
-
 export const SEED_ADMIN_REVIEWS = [
   { id: 'r1', name: 'Sadia M.', product: 'Silk Barrier Moisturizer', rating: 5, text: 'Absolutely lives up to the hype. My skin drinks it up.', status: 'Approved', image: '/images/reviews/review1.jpg' },
   { id: 'r2', name: 'Rimi H.', product: 'SPF 50 Silk Shield', rating: 4, text: 'Light texture, no white cast. Wish the bottle was bigger.', status: 'Pending', image: '/images/reviews/review2.jpg' },

@@ -25,13 +25,16 @@ export const KEYS = {
   products: 'mmp-admin-products',
   coupons: 'mmp-admin-coupons',
   users: 'mmp-admin-users',
-  banners: 'mmp-admin-banners',
+  heroSlides: 'mmp-admin-hero-slides', // the slides in the home page carousel
+  footer: 'mmp-admin-footer', // footer links, social media and payment logos
   reviews: 'mmp-admin-reviews',
   partners: 'mmp-admin-partners',
   messages: 'mmp-admin-messages', // chat between admin and delivery partners
   blogs: 'mmp-admin-blogs', // blog posts (the shop's home page reads this list too)
   carts: 'mmp-admin-carts', // saved carts, for the Behaviour tab
   wishlists: 'mmp-admin-wishlists', // saved wishlists, for the Behaviour tab
+  siteLogo: 'mmp-site-logo', // the logo in the shop's top menu (empty = the original logo)
+  pageHeader: 'mmp-site-page-header', // banner picture under the menu on every shop page (empty = none)
   session: 'mmp-admin-session',
 }
 

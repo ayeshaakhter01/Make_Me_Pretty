@@ -5,8 +5,10 @@ import { cx } from './adminHelpers.js'
 /* PHOTO PICKER used by the product form and the blog form.
    images   = list of saved pictures (the first one is the main picture)
    onChange = called with the new list whenever a photo is added, removed or moved first
-   max      = how many photos are allowed (1 = a single cover photo that "Change" replaces) */
-export default function ImageField({ images, onChange, max = 5, maxSide = 640, quality = 0.75 }) {
+   max      = how many photos are allowed (1 = a single cover photo that "Change" replaces)
+   format / previewClass / fit = for wide pictures and logos: 'image/png' keeps a see-through
+   background, previewClass sets the size of the little preview, fit='contain' shows the whole picture */
+export default function ImageField({ images, onChange, max = 5, maxSide = 640, quality = 0.75, format = 'image/jpeg', previewClass = 'size-20', fit = 'cover' }) {
   const inputRef = useRef(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -24,7 +26,7 @@ export default function ImageField({ images, onChange, max = 5, maxSide = 640, q
     try {
       const room = single ? 1 : max - images.length
       const added = []
-      for (const file of files.slice(0, room)) added.push(await compressImage(file, { maxSide, quality }))
+      for (const file of files.slice(0, room)) added.push(await compressImage(file, { maxSide, quality, format }))
       onChange(single ? added : [...images, ...added])
       if (files.length > room) setError(`Only ${max} photos fit, so the extra ones were skipped.`)
     } catch (problem) {
@@ -41,8 +43,8 @@ export default function ImageField({ images, onChange, max = 5, maxSide = 640, q
     <div>
       <div className="flex flex-wrap gap-2.5">
         {images.map((src, index) => (
-          <div key={`${index}-${src.slice(-24)}`} className="relative size-20 overflow-hidden rounded-xl border border-line bg-ivory">
-            <img src={src} alt={`Photo ${index + 1}`} className="size-full object-cover" />
+          <div key={`${index}-${src.slice(-24)}`} className={`relative ${previewClass} overflow-hidden rounded-xl border border-line bg-ivory`}>
+            <img src={src} alt={`Photo ${index + 1}`} className={`size-full ${fit === 'contain' ? 'object-contain p-1' : 'object-cover'}`} />
             {!single && index === 0 && images.length > 1 && (
               <span className="absolute bottom-1 left-1 rounded-full bg-ink/75 px-1.5 py-0.5 text-[9px] font-medium text-ivory">Main</span>
             )}
@@ -58,7 +60,7 @@ export default function ImageField({ images, onChange, max = 5, maxSide = 640, q
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            className={cx('grid size-20 place-items-center rounded-xl border-[1.5px] border-dashed border-line bg-ivory text-center text-[11px] leading-tight text-ink-soft transition-colors hover:border-rose hover:text-rose', busy && 'opacity-60')}
+            className={cx(`grid ${previewClass} place-items-center rounded-xl border-[1.5px] border-dashed border-line bg-ivory text-center text-[11px] leading-tight text-ink-soft transition-colors hover:border-rose hover:text-rose`, busy && 'opacity-60')}
           >
             {busy ? 'Adding…' : single && images.length > 0 ? 'Change' : '+ Add photo'}
           </button>
