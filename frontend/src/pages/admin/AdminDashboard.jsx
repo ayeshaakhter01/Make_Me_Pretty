@@ -6,6 +6,7 @@ import InventoryManager from '../../components/admin/InventoryManager.jsx'
 import AnalyticsPanel from '../../components/admin/AnalyticsPanel.jsx'
 import CouponManager from '../../components/admin/CouponManager.jsx'
 import BannersManager from '../../components/admin/BannersManager.jsx'
+import FooterManager from '../../components/admin/FooterManager.jsx'
 import ReviewsPanel from '../../components/admin/ReviewsPanel.jsx'
 import UsersPanel from '../../components/admin/UsersPanel.jsx'
 import DeliveryPanel from '../../components/admin/DeliveryPanel.jsx'
@@ -15,8 +16,9 @@ import { STORAGE_FULL_EVENT, useStoredState } from '../../components/admin/useSt
 import { CANCELLED, KEYS, money } from '../../components/admin/adminHelpers.js'
 import {
   INITIAL_COUPONS, INITIAL_ORDERS, INITIAL_PRODUCTS,
-  SEED_ADMIN_REVIEWS, SEED_BANNERS, SEED_BLOGS, SEED_CARTS, SEED_PARTNERS, SEED_USERS, SEED_WISHLISTS,
+  SEED_ADMIN_REVIEWS, SEED_BLOGS, SEED_CARTS, SEED_PARTNERS, SEED_USERS, SEED_WISHLISTS,
 } from '../../data/adminSeed.js'
+import { SEED_FOOTER, SEED_HERO_SLIDES } from '../../data/siteContent.js'
 
 /* =============================================================================
    ADMIN DASHBOARD
@@ -30,7 +32,10 @@ export default function AdminDashboard({ session, onSignOut }) {
   const [products, setProducts] = useStoredState(KEYS.products, INITIAL_PRODUCTS)
   const [coupons, setCoupons] = useStoredState(KEYS.coupons, INITIAL_COUPONS)
   const [users, setUsers] = useStoredState(KEYS.users, SEED_USERS)
-  const [banners, setBanners] = useStoredState(KEYS.banners, SEED_BANNERS)
+  const [heroSlides, setHeroSlides] = useStoredState(KEYS.heroSlides, SEED_HERO_SLIDES) // the home page carousel
+  const [footer, setFooter] = useStoredState(KEYS.footer, SEED_FOOTER) // footer links, social media, payment logos
+  const [logo, setLogo] = useStoredState(KEYS.siteLogo, '') // the shop's menu logo
+  const [headerImage, setHeaderImage] = useStoredState(KEYS.pageHeader, '') // banner picture on every shop page
   const [reviews, setReviews] = useStoredState(KEYS.reviews, SEED_ADMIN_REVIEWS)
   const [partners, setPartners] = useStoredState(KEYS.partners, SEED_PARTNERS)
   const [messages, setMessages] = useStoredState(KEYS.messages, [])
@@ -100,7 +105,8 @@ export default function AdminDashboard({ session, onSignOut }) {
           {tab === 'Behaviour' && <BehaviourPanel users={users} orders={orders} products={products} carts={carts} wishlists={wishlists} />}
           {tab === 'Analytics' && <AnalyticsPanel orders={orders} />}
           {tab === 'Coupons' && <CouponManager coupons={coupons} setCoupons={setCoupons} />}
-          {tab === 'Banners' && <BannersManager banners={banners} setBanners={setBanners} />}
+          {tab === 'Banners' && <BannersManager slides={heroSlides} setSlides={setHeroSlides} logo={logo} setLogo={setLogo} headerImage={headerImage} setHeaderImage={setHeaderImage} />}
+          {tab === 'Footer' && <FooterManager footer={footer} setFooter={setFooter} />}
           {tab === 'Reviews' && <ReviewsPanel reviews={reviews} setReviews={setReviews} />}
           {tab === 'Blog' && <BlogManager posts={blogs} setPosts={setBlogs} />}
           {tab === 'Users' && <UsersPanel users={users} setUsers={setUsers} />}
