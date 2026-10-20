@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 const STORAGE_KEY = 'mmp_welcome_seen'
 const offers = [
-  { title: 'Free delivery on orders over ৳2,000 · Nationwide', label: '✓ Free delivery', href: '/shop' },
+  { title: 'Free delivery on orders over ৳3,000 · Nationwide', label: '✓ Free delivery', href: '/shop' },
   { title: '20% off your order with code GLOW20', label: 'Use code  GLOW20', href: '/offers' },
 ]
 

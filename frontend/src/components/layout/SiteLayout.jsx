@@ -6,6 +6,7 @@ import CartDrawer from '../cart/CartDrawer.jsx'
 import LiquidBackground from './LiquidBackground.jsx'
 import WelcomePromo from '../home/WelcomePromo.jsx'
 import AdvisorPopup from '../ai/AdvisorPopup.jsx'
+import PageBanner from './PageBanner.jsx'
 import { useCart } from '../../context/useCart.js'
 
 export default function SiteLayout() {
@@ -16,5 +17,5 @@ export default function SiteLayout() {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [pathname])
 
-  return <div className="relative isolate min-h-screen"><LiquidBackground /><div className="relative z-10"><SiteHeader onOpenCart={openDrawer} /><main><Outlet /></main><SiteFooter /><CartDrawer /><WelcomePromo /><AdvisorPopup /></div></div>
+  return <div className="relative isolate min-h-screen"><LiquidBackground /><div className="relative z-10"><SiteHeader onOpenCart={openDrawer} /><PageBanner /><main><Outlet /></main><SiteFooter /><CartDrawer /><WelcomePromo /><AdvisorPopup /></div></div>
 }

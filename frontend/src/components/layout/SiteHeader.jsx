@@ -4,9 +4,11 @@ import { categories, products } from '../../data/products.js'
 import { useCart } from '../../context/useCart.js'
 import Icon from '../ui/Icon.jsx'
 import PageContainer from '../ui/PageContainer.jsx'
+import { KEYS } from '../admin/adminHelpers.js'
+import { useStoredState } from '../admin/useStoredState.js'
 
 const offerMessages = [
-  { message: 'Free delivery on orders over ৳2,000 · Nationwide', code: '' },
+  { message: 'Free delivery on orders over ৳3,000 · Nationwide', code: '' },
   { message: '20% off your order with code GLOW20', code: 'GLOW20' },
 ]
 
@@ -50,7 +52,8 @@ function SearchForm({ compact = false, onNavigate }) {
 }
 
 function BrandLogo() {
-  return <Link to="/" aria-label="Make Me Pretty home" className="flex shrink-0 items-center"><img src="/images/logo1.png" alt="Make Me Pretty" className="h-10 w-auto max-w-[180px] object-contain sm:h-11" /></Link>
+  const [customLogo] = useStoredState(KEYS.siteLogo, '') // set by the admin in the Banners tab
+  return <Link to="/" aria-label="Make Me Pretty home" className="flex shrink-0 items-center"><img src={customLogo || '/images/logo1.png'} alt="Make Me Pretty" className="h-10 w-auto max-w-[180px] object-contain sm:h-11" /></Link>
 }
 
 function WishlistLink({ count }) {
