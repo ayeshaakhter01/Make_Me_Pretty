@@ -14,7 +14,7 @@ const sections = [
   {
     title: 'Delivery charges',
     body: [
-      'Free delivery on orders over ৳2,000, nationwide.',
+      'Free delivery on orders over ৳3,000, nationwide.',
       'For smaller orders, the delivery charge for your area is shown at checkout before you pay.',
     ],
   },
