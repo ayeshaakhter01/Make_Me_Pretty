@@ -39,7 +39,9 @@ export default function AdminDashboard({ session, onSignOut }) {
   const [reviews, setReviews] = useStoredState(KEYS.reviews, SEED_ADMIN_REVIEWS)
   const [partners, setPartners] = useStoredState(KEYS.partners, SEED_PARTNERS)
   const [messages, setMessages] = useStoredState(KEYS.messages, [])
-  const [blogs, setBlogs] = useStoredState(KEYS.blogs, SEED_BLOGS)
+  const [blogs, setBlogs] = useState([])
+  const [blogsLoading, setBlogsLoading] = useState(true)
+  const [blogsError, setBlogsError] = useState('')
   const [carts] = useStoredState(KEYS.carts, SEED_CARTS) // only read here: the shop will fill these once there is a backend
   const [wishlists] = useStoredState(KEYS.wishlists, SEED_WISHLISTS)
   const [storageFull, setStorageFull] = useState(false)
@@ -50,6 +52,53 @@ export default function AdminDashboard({ session, onSignOut }) {
     window.addEventListener(STORAGE_FULL_EVENT, onFull)
     return () => window.removeEventListener(STORAGE_FULL_EVENT, onFull)
   }, [])
+
+  
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadBlogs() {
+      try {
+        const response = await fetch(
+          'http://localhost:5000/api/blogs/admin/all'
+        )
+
+        if (!response.ok) {
+          throw new Error('Could not load blog posts.')
+        }
+
+        const result = await response.json()
+
+        if (!Array.isArray(result.data)) {
+          throw new Error('Unexpected blog API response.')
+        }
+
+        if (!cancelled) {
+          setBlogs(
+            result.data.map((post) => ({
+              ...post,
+              id: post._id,
+              active: post.status === 'published',
+            }))
+          )
+          setBlogsError('')
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setBlogsError(error.message || 'Could not load blog posts.')
+        }
+      } finally {
+        if (!cancelled) setBlogsLoading(false)
+      }
+    }
+
+    loadBlogs()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
 
   /* numbers for the boxes at the top */
   const stats = useMemo(() => {
@@ -108,7 +157,15 @@ export default function AdminDashboard({ session, onSignOut }) {
           {tab === 'Banners' && <BannersManager slides={heroSlides} setSlides={setHeroSlides} logo={logo} setLogo={setLogo} headerImage={headerImage} setHeaderImage={setHeaderImage} />}
           {tab === 'Footer' && <FooterManager footer={footer} setFooter={setFooter} />}
           {tab === 'Reviews' && <ReviewsPanel reviews={reviews} setReviews={setReviews} />}
-          {tab === 'Blog' && <BlogManager posts={blogs} setPosts={setBlogs} />}
+          {tab === 'Blog' && (
+            blogsLoading ? (
+              <p className="text-sm text-ink-soft">Loading blog posts...</p>
+            ) : blogsError ? (
+              <p className="text-sm text-lowstock-text">{blogsError}</p>
+            ) : (
+              <BlogManager posts={blogs} setPosts={setBlogs} />
+            )
+          )}
           {tab === 'Users' && <UsersPanel users={users} setUsers={setUsers} />}
           {tab === 'Delivery' && <DeliveryPanel partners={partners} setPartners={setPartners} orders={orders} />}
         </main>
