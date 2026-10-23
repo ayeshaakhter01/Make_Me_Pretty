@@ -4,15 +4,19 @@ import { categories, products } from '../../data/products.js'
 import { useCart } from '../../context/useCart.js'
 import Icon from '../ui/Icon.jsx'
 import PageContainer from '../ui/PageContainer.jsx'
+import OffersModal from './OffersModal.jsx'
+import { KEYS } from '../admin/adminHelpers.js'
+import { useStoredState } from '../admin/useStoredState.js'
 
 const offerMessages = [
-  { message: 'Free delivery on orders over ৳2,000 · Nationwide', code: '' },
+  { message: 'Free delivery on orders over ৳3,000 · Nationwide', code: '' },
   { message: '20% off your order with code GLOW20', code: 'GLOW20' },
 ]
 
 function OffersBar() {
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(true)
+  const [offersOpen, setOffersOpen] = useState(false)
 
   useEffect(() => {
     const timer = window.setInterval(() => setIndex((current) => (current + 1) % offerMessages.length), 4200)
@@ -22,9 +26,10 @@ function OffersBar() {
   if (!visible) return null
   const offer = offerMessages[index]
   return <div className="relative z-[95] bg-gradient-to-r from-rose via-rose-deep to-rose px-12 py-2 text-center text-[12px] font-semibold tracking-[0.06em] text-white">
-    <Link to="/offers" className="inline-flex max-w-full items-center justify-center gap-2.5"><span key={offer.message} className="animate-fadeup">{offer.message}</span>{offer.code && <span className="shrink-0 rounded-full border border-white/40 bg-white/10 px-3 py-0.5 text-[10px] font-semibold tracking-[0.12em]">CODE: {offer.code}</span>}<span aria-hidden="true" className="hidden text-[9px] text-white/70 sm:inline">▼</span></Link>
+    <button type="button" onClick={() => setOffersOpen(true)} className="inline-flex max-w-full items-center justify-center gap-2.5"><span key={offer.message} className="animate-fadeup">{offer.message}</span>{offer.code && <span className="shrink-0 rounded-full border border-white/40 bg-white/10 px-3 py-0.5 text-[10px] font-semibold tracking-[0.12em]">CODE: {offer.code}</span>}<span aria-hidden="true" className="hidden text-[9px] text-white/70 sm:inline">▼</span></button>
     <div className="absolute right-8 top-1/2 flex -translate-y-1/2 gap-1.5">{offerMessages.map((item, dot) => <button key={item.code || item.message} type="button" onClick={() => setIndex(dot)} aria-label={`Show offer ${dot + 1}`} aria-current={dot === index} className={`size-1.5 rounded-full ${dot === index ? 'bg-white' : 'bg-white/40'}`} />)}</div>
     <button type="button" onClick={() => setVisible(false)} aria-label="Dismiss offer banner" className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full text-lg leading-none text-white/85 transition hover:bg-white/15 hover:text-white">×</button>
+    {offersOpen && <OffersModal onClose={() => setOffersOpen(false)} />}
   </div>
 }
 
@@ -50,7 +55,8 @@ function SearchForm({ compact = false, onNavigate }) {
 }
 
 function BrandLogo() {
-  return <Link to="/" aria-label="Make Me Pretty home" className="flex shrink-0 items-center"><img src="/images/logo1.png" alt="Make Me Pretty" className="h-10 w-auto max-w-[180px] object-contain sm:h-11" /></Link>
+  const [customLogo] = useStoredState(KEYS.siteLogo, '') // set by the admin in the Banners tab
+  return <Link to="/" aria-label="Make Me Pretty home" className="flex shrink-0 items-center"><img src={customLogo || '/images/logo1.png'} alt="Make Me Pretty" className="h-10 w-auto max-w-[180px] object-contain sm:h-11" /></Link>
 }
 
 function WishlistLink({ count }) {
