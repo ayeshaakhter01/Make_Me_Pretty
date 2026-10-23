@@ -17,6 +17,7 @@ const TrackPage = lazy(() => import('./pages/TrackPage.jsx'))
 const AccountPage = lazy(() => import('./pages/AccountPage.jsx'))
 const AdminApp = lazy(() => import('./pages/admin/AdminApp.jsx'))
 const SkinAdvisorPage = lazy(() => import('./pages/SkinAdvisorPage.jsx'))
+const CustomerAccountPage = lazy(() =>  import('./pages/CustomerAccountPage.jsx'))
 
 function RouteLoading() {
   return <div className="mx-auto max-w-7xl px-5 py-24 text-center text-muted">Loading your beauty essentials…</div>
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="track" element={<TrackPage />} />
           <Route path="skin-advisor" element={<SkinAdvisorPage />} />
           <Route path="account" element={<AccountPage />} />
+          <Route path="account/profile" element={<CustomerAccountPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
