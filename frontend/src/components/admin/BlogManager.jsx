@@ -11,30 +11,155 @@ export default function BlogManager({ posts, setPosts }) {
 
   const shown = posts.filter((post) => post.active).length
 
-  function save(post) {
-    setPosts((current) =>
-      current.some((p) => p.id === post.id)
-        ? current.map((p) => (p.id === post.id ? post : p)) // edit
-        : [post, ...current], // new posts go to the top
-    )
-    setEditing(null)
+  
+  async function save(post) {
+    const existing = posts.some((p) => p.id === post.id)
+
+    const payload = {
+      title: post.title,
+      tag: post.tag,
+      read: post.read,
+      excerpt: post.excerpt,
+      body: post.body,
+      image: post.image,
+      status: post.active ? 'published' : 'draft',
+      order: existing ? (post.order ?? 0) : 0,
+    }
+
+    try {
+      const response = await fetch(
+        existing
+          ? `http://localhost:5000/api/blogs/${post.id}`
+          : 'http://localhost:5000/api/blogs',
+        {
+          method: existing ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }
+      )
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(
+          result.message || 'Could not save the blog post.'
+        )
+      }
+
+      const savedPost = {
+        ...result.data,
+        id: result.data._id,
+        active: result.data.status === 'published',
+      }
+
+      setPosts((current) =>
+        existing
+          ? current.map((p) =>
+              p.id === post.id ? savedPost : p
+            )
+          : [savedPost, ...current]
+      )
+
+      setEditing(null)
+    } catch (error) {
+      console.error('Could not save blog post:', error)
+      window.alert(error.message || 'Could not save the blog post.')
+    }
   }
 
-  const toggle = (id) => setPosts((current) => current.map((p) => (p.id === id ? { ...p, active: !p.active } : p)))
-  const remove = (post) => {
-    if (window.confirm(`Delete "${post.title}"?`)) setPosts((current) => current.filter((p) => p.id !== post.id))
+
+  
+  async function toggle(id) {
+    const post = posts.find((p) => p.id === id)
+    if (!post) return
+
+    const nextActive = !post.active
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/blogs/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: nextActive ? 'published' : 'draft',
+        }),
+      })
+
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message || 'Could not update visibility.')
+      }
+
+      setPosts((current) =>
+        current.map((p) =>
+          p.id === id
+            ? { ...p, ...result.data, id: result.data._id, active: result.data.status === 'published' }
+            : p
+        )
+      )
+    } catch (error) {
+      window.alert(error.message || 'Could not update blog visibility.')
+    }
   }
+
+  
+  async function remove(post) {
+    if (!window.confirm(`Delete "${post.title}"?`)) return
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/blogs/${post.id}`,
+        { method: 'DELETE' }
+      )
+
+      const result = await response.json()
+      if (!response.ok) {
+        throw new Error(result.message || 'Could not delete blog post.')
+      }
+
+      setPosts((current) => current.filter((p) => p.id !== post.id))
+    } catch (error) {
+      window.alert(error.message || 'Could not delete blog post.')
+    }
+  }
+
 
   /* swap a post with its neighbour (direction -1 = up, 1 = down) */
-  function move(index, direction) {
+  
+  async function move(index, direction) {
     const target = index + direction
     if (target < 0 || target >= posts.length) return
-    setPosts((current) => {
-      const next = [...current]
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
-    })
+
+    const next = [...posts]
+    ;[next[index], next[target]] = [next[target], next[index]]
+
+    const reordered = next.map((post, position) => ({
+      ...post,
+      order: position,
+    }))
+
+    try {
+      const responses = await Promise.all(
+        reordered.map((post) =>
+          fetch(`http://localhost:5000/api/blogs/${post.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order: post.order }),
+          })
+        )
+      )
+
+      const failedResponse = responses.find((response) => !response.ok)
+
+      if (failedResponse) {
+        throw new Error('Could not save the new blog order.')
+      }
+
+      setPosts(reordered)
+    } catch (error) {
+      window.alert(error.message || 'Could not reorder blog posts.')
+    }
   }
+
 
   return (
     <div>
