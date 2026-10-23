@@ -1,10 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Autoplay, EffectCoverflow, Pagination } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { SEED_BLOGS } from '../../data/adminSeed.js'
-import { KEYS } from '../admin/adminHelpers.js'
 import { imageSrc } from '../admin/imageHelpers.js'
-import { useStoredState } from '../admin/useStoredState.js'
 import Reveal from '../ui/Reveal.jsx'
 
 function BlogReader({ post, onClose }) {
@@ -27,10 +24,68 @@ function BlogReader({ post, onClose }) {
 }
 
 export default function BlogSection() {
-  /* the posts come from the admin's Blog tab (hidden posts are left out) */
-  const [savedPosts] = useStoredState(KEYS.blogs, SEED_BLOGS)
-  const posts = savedPosts.filter((post) => post.active !== false)
+  
+  const [savedPosts, setSavedPosts] = useState([])
   const [openPost, setOpenPost] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchBlogs() {
+      try {
+        const response = await fetch('http://localhost:5000/api/blogs')
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch blog posts')
+        }
+
+        
+        const data = await response.json()
+
+        const blogList = Array.isArray(data)
+          ? data
+          : Array.isArray(data.blogs)
+            ? data.blogs
+            : Array.isArray(data.data)
+              ? data.data
+              : Array.isArray(data.posts)
+                ? data.posts
+                : null
+
+        if (!blogList) {
+          throw new Error('Unexpected blog API response format')
+        }
+
+
+        if (!cancelled) {
+          setSavedPosts(
+            blogList.map((post) => ({
+              ...post,
+              id: post._id || post.id,
+              active: post.status === 'published',
+            }))
+          )
+          setLoadError(false)
+        }
+      } catch (error) {
+        console.error('Could not load blog posts:', error)
+        if (!cancelled) setLoadError(true)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    fetchBlogs()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const posts = savedPosts.filter((post) => post.active !== false)
+
   const swiperRef = useRef(null)
   const closeArticle = useCallback(() => setOpenPost(null), [])
 
@@ -40,6 +95,14 @@ export default function BlogSection() {
     if (openPost) autoplay.stop()
     else autoplay.start()
   }, [openPost])
+
+  if (loading) {
+    return <section className="mx-auto max-w-[1200px] px-5 py-16 text-center">Loading blog posts...</section>
+  }
+
+  if (loadError) {
+    return <section className="mx-auto max-w-[1200px] px-5 py-16 text-center">Unable to load blog posts. Please try again later.</section>
+  }
 
   if (posts.length === 0) return null
 
