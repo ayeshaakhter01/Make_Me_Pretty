@@ -35,6 +35,10 @@ export default function AccountPage() {
       )
 
       saveAuthSession({ user: result.user, token: result.token })
+      if (result.user.role !== 'customer') {
+        setMessage('This is a staff account. Please sign in at /admin.')
+        return
+      }
       navigate('/account/profile')
       setMessage(
         isSignUp

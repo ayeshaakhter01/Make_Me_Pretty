@@ -36,9 +36,16 @@ export default function CustomerAccountPage() {
   const [orderId, setOrderId] = useState('')
 
   useEffect(() => {
-    if (!loadAuthSession()?.token) {
-      navigate('/account')
-      return
+    const session = loadAuthSession()
+    
+    if (!session?.token) {
+        navigate('/account', { replace: true })
+        return
+    }
+    
+    if (session.user?.role !== 'customer') {
+        navigate('/admin', { replace: true })
+        return
     }
 
     async function loadAccount() {
