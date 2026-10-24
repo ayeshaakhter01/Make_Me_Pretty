@@ -9,7 +9,7 @@ export default function OrderInvoice({ order, onClose }) {
         <div><span className="text-ink">{order.name}</span> · {order.phone}</div>
         <div>{order.address}</div>
         <div>Date: {order.date} · Payment: {order.method} ({order.pay})</div>
-        <div>Status: <span className="text-ink">{ORDER_STATUSES[order.status]}</span>{order.partner ? ` · Delivery: ${order.partner}` : ''}</div>
+        <div>Status: <span className="text-ink">{ORDER_STATUSES[order.status]}</span>{order.partnerName ? ` · Delivery: ${order.partnerName}` : ''}</div>
       </div>
 
       <table className="mt-4 w-full border-collapse text-sm">

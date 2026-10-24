@@ -3,17 +3,40 @@ import Modal from './Modal.jsx'
 import OrderInvoice from './OrderInvoice.jsx'
 import OrderMessages from './OrderMessages.jsx'
 import { CANCELLED, DELIVERED, ORDER_STATUSES, card, cx, ghostButton, money, td, th } from './adminHelpers.js'
+import { apiRequest } from '../../api.js'
 
 /* ORDERS: filter by stage, change the stage, assign a delivery partner,
    view the invoice, and CHAT with the delivery partner about an order.
    An order with a reported problem shows a red "Issue" tag until it is resolved. */
-export default function OrdersTable({ orders, setOrders, partners, messages, setMessages }) {
+export default function OrdersTable({ orders, setOrders, partners }) {
   const [stage, setStage] = useState('all') // 'all' or a stage number
   const [invoice, setInvoice] = useState(null)
   const [chatId, setChatId] = useState(null)
 
-  const update = (id, changes) =>
-    setOrders((current) => current.map((order) => (order.id === id ? { ...order, ...changes } : order)))
+  const update = async (id, changes) => {
+    const order = orders.find((item) => item.id === id)
+    if (changes.partner === '' && order?._id) return window.alert('Unassigning a delivery partner is not available yet.')
+    if (!order?._id) return
+    if (changes.issue === '') {
+      try { await apiRequest(`/orders/admin/${id}/issue`, { method: 'DELETE' }); setOrders((current) => current.map((item) => item.id === id ? { ...item, issue: '' } : item)) }
+      catch (error) { window.alert(error.message) }
+      return
+    }
+    if (changes.status !== undefined) {
+      const nextStatus = ['pending', 'confirmed', 'shipped', 'outForDelivery', 'delivered', 'cancelled'][changes.status]
+      try {
+        await apiRequest(`/orders/admin/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status: nextStatus }) })
+        setOrders((current) => current.map((item) => item.id === id ? { ...item, ...changes } : item))
+      } catch (error) { window.alert(error.message) }
+    }
+    if (changes.partner !== undefined) {
+      if (!changes.partner) return window.alert('Unassigning a delivery partner is not available yet.')
+      try {
+        await apiRequest(`/orders/admin/${id}/assign-delivery`, { method: 'POST', body: JSON.stringify({ deliveryPartnerId: changes.partner }) })
+        setOrders((current) => current.map((item) => item.id === id ? { ...item, partner: changes.partner, partnerName: partners.find((partner) => partner.id === changes.partner)?.name || '', status: item.status === 0 ? 1 : item.status } : item))
+      } catch (error) { window.alert(error.message) }
+    }
+  }
 
   const counts = useMemo(() => {
     const result = ORDER_STATUSES.map(() => 0)
@@ -47,15 +70,16 @@ export default function OrdersTable({ orders, setOrders, partners, messages, set
               <tr><td colSpan={10} className="px-4 py-10 text-center text-ink-soft">No orders in this stage.</td></tr>
             ) : visible.map((order) => {
               const finished = order.status === DELIVERED || order.status === CANCELLED
-              const chatCount = messages.filter((message) => message.orderId === order.id).length
+              const chatCount = order.messageCount || 0
               return (
                 <tr key={order.id}>
                   <td className={td}>
-                    <div className="font-semibold">{order.id}</div>
+                    <div className="font-semibold">{order.orderNumber || order.id}</div>
                     <div className="text-xs text-ink-soft">{order.date}</div>
+                    {order.isDemo && <span className="mt-1 inline-block rounded-full bg-pink px-2 py-0.5 text-[10px] font-semibold text-rose-deep">Sample data</span>}
                     {order.issue && <span className="mt-1 inline-block rounded-full bg-lowstock-bg px-2 py-0.5 text-[10px] font-semibold text-lowstock-text">Issue</span>}
                   </td>
-                  <td className={td}>{order.name}</td>
+                  <td className={td}><div>{order.name}</div>{order.accountEmail && <div className="text-xs text-ink-soft">{order.accountEmail}</div>}{order.address && order.address !== order.name && <div className="mt-1 text-xs text-ink-soft">Deliver to: {order.address}</div>}</td>
                   <td className={`${td} text-ink-soft`}>{order.items}</td>
                   <td className={td}>{money(order.total)}</td>
                   <td className={td}>
@@ -70,7 +94,7 @@ export default function OrdersTable({ orders, setOrders, partners, messages, set
                   <td className={td}>
                     <select value={order.partner} onChange={(event) => update(order.id, { partner: event.target.value })} className="!w-auto !py-2 text-[13px]" aria-label={`Delivery partner for ${order.id}`}>
                       <option value="">Not assigned</option>
-                      {partners.map((partner) => <option key={partner.id} value={partner.name}>{partner.name}</option>)}
+                      {partners.map((partner) => <option key={partner.id} value={partner.id}>{partner.name}</option>)}
                     </select>
                   </td>
                   <td className={td}>
@@ -101,10 +125,10 @@ export default function OrdersTable({ orders, setOrders, partners, messages, set
       {chatOrder && (
         <Modal title={`Chat · ${chatOrder.id}`} onClose={() => setChatId(null)}>
           <p className="mb-3 text-[13px] text-ink-soft">
-            {chatOrder.partner ? `Delivery partner: ${chatOrder.partner}` : 'No delivery partner assigned yet.'}
+            {chatOrder.partnerName ? `Delivery partner: ${chatOrder.partnerName}` : 'No delivery partner assigned yet.'}
             {chatOrder.issue && <span className="ml-2 text-lowstock-text">Reported: {chatOrder.issue}</span>}
           </p>
-          <OrderMessages order={chatOrder} messages={messages} setMessages={setMessages} me={{ from: 'admin', name: 'Admin' }} />
+          <OrderMessages order={chatOrder} me={{ from: 'admin', name: 'Admin' }} />
           {chatOrder.issue && (
             <button type="button" onClick={() => update(chatOrder.id, { issue: '' })} className={`${ghostButton} mt-4`}>Mark problem as resolved</button>
           )}
