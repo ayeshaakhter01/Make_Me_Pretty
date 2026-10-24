@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Modal from './Modal.jsx'
 import { card, cx } from './adminHelpers.js'
+import { apiRequest, assetUrl } from '../../api.js'
 
 const FILTERS = ['All', 'Pending', 'Approved', 'Rejected']
 const TONE = { Approved: 'bg-gold-soft text-gold', Pending: 'bg-pink text-rose-deep', Rejected: 'bg-lowstock-bg text-lowstock-text' }
@@ -8,21 +9,46 @@ const TONE = { Approved: 'bg-gold-soft text-gold', Pending: 'bg-pink text-rose-d
 /* REVIEWS: approve, reject or delete what customers wrote, and see the photo they attached.
    A review keeps its photo in `review.image` (empty = no photo).
    Once customers can send reviews from the shop, their photo arrives in that same field. */
-export default function ReviewsPanel({ reviews, setReviews }) {
+const titleCase = (value = '') => value.charAt(0).toUpperCase() + value.slice(1)
+const formatReview = (review) => ({ ...review, id: review._id, name: review.customerName, product: typeof review.product === 'string' ? review.product : review.product?.name || 'Product', status: titleCase(review.status) })
+
+export default function ReviewsPanel() {
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [filter, setFilter] = useState('All')
   const [zoomed, setZoomed] = useState(null) // the review whose photo is open full size
+
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/admin/reviews').then((result) => { if (!cancelled) setReviews(result.map(formatReview)) })
+      .catch((problem) => { if (!cancelled) setError(problem.message) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   const visible = reviews.filter((r) => {
     if (filter === 'All') return true
     return r.status === filter
   })
 
-  const update = (id, changes) => setReviews((current) => current.map((r) => (r.id === id ? { ...r, ...changes } : r)))
-  const setStatus = (id, status) => update(id, { status })
-  const remove = (id) => setReviews((current) => current.filter((r) => r.id !== id))
+  async function setStatus(id, status) {
+    try {
+      const result = await apiRequest(`/admin/reviews/${id}`, { method: 'PATCH', body: JSON.stringify({ status: status.toLowerCase() }) })
+      setReviews((current) => current.map((review) => review.id === id ? formatReview({ ...result, product: review.product }) : review))
+      setError('')
+    } catch (problem) { setError(problem.message) }
+  }
+  async function remove(id) {
+    try { await apiRequest(`/admin/reviews/${id}`, { method: 'DELETE' }); setReviews((current) => current.filter((review) => review.id !== id)); setError('') }
+    catch (problem) { setError(problem.message) }
+  }
 
   return (
     <div>
+      {error && <p role="alert" className="mb-4 text-sm text-lowstock-text">{error}</p>}
+      {loading && <p className={`${card} mb-4 p-5 text-sm text-ink-soft`}>Loading reviews from database…</p>}
+      {!loading && reviews.some((review) => review.isDemo) && <p className="mb-4 text-xs text-ink-soft">Preview entries are generated examples, separate from customer-submitted reviews.</p>}
       <div className="mb-4 flex flex-wrap gap-2">
         {FILTERS.map((name) => (
           <button
@@ -37,12 +63,12 @@ export default function ReviewsPanel({ reviews, setReviews }) {
       </div>
 
       <div className="grid gap-3">
-        {visible.length === 0 && <p className={`${card} p-6 text-sm text-ink-soft`}>No reviews here.</p>}
+        {!loading && visible.length === 0 && <p className={`${card} p-6 text-sm text-ink-soft`}>No reviews in this filter.</p>}
         {visible.map((review) => (
           <div key={review.id} className={`${card} flex gap-4 p-5`}>
             {review.image && (
               <button type="button" onClick={() => setZoomed(review)} aria-label={`Open the photo from ${review.name}`} className="size-20 flex-shrink-0 overflow-hidden rounded-xl border border-line transition-transform hover:scale-[1.03]">
-                <img src={review.image} alt={`Photo from ${review.name}`} className="size-full object-cover" />
+                <img src={assetUrl(review.image)} alt={`Photo from ${review.name}`} className="size-full object-cover" />
               </button>
             )}
 
@@ -66,7 +92,7 @@ export default function ReviewsPanel({ reviews, setReviews }) {
 
       {zoomed && (
         <Modal title={`${zoomed.name} · ${zoomed.product}`} onClose={() => setZoomed(null)}>
-          <img src={zoomed.image} alt={`Photo from ${zoomed.name}`} className="max-h-[70vh] w-full rounded-xl object-contain" />
+          <img src={assetUrl(zoomed.image)} alt={`Photo from ${zoomed.name}`} className="max-h-[70vh] w-full rounded-xl object-contain" />
           <p className="mt-3 text-sm text-ink-soft">{zoomed.text}</p>
         </Modal>
       )}

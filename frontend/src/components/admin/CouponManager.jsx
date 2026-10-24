@@ -1,17 +1,6 @@
 import { useEffect, useState } from 'react'
 import { card, cx, ghostButton, roseButton, td, th } from './adminHelpers.js'
-
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000'
-
-async function request(path, options) {
-  const response = await fetch(`${API}${path}`, {
-    ...options,
-    headers: { ...(options?.body ? { 'Content-Type': 'application/json' } : {}), ...options?.headers },
-  })
-  const result = await response.json()
-  if (!response.ok) throw new Error(result.message || 'Coupon request failed.')
-  return result
-}
+import { apiRequest } from '../../api.js'
 
 const TYPE_LABEL = { percent: '% off', fixed: '৳ off', shipping: 'Free delivery' }
 
@@ -25,8 +14,8 @@ export default function CouponManager({ coupons, setCoupons }) {
 
   useEffect(() => {
     let cancelled = false
-    request('/api/coupons/admin/all')
-      .then(({ data }) => {
+    apiRequest('/coupons/admin/all')
+      .then((data) => {
         if (cancelled) return
         setCoupons(data.map((coupon) => ({ ...coupon, id: coupon._id })))
         setError('')
@@ -48,8 +37,9 @@ export default function CouponManager({ coupons, setCoupons }) {
     setSaving(true)
     try {
       const payload = { code, type: form.type, value: form.type === 'shipping' ? 0 : Number(form.value), active: true, note: form.note.trim() }
-      const { data } = await request('/api/coupons', { method: 'POST', body: JSON.stringify(payload) })
+      const data = await apiRequest('/coupons', { method: 'POST', body: JSON.stringify(payload) })
       setCoupons((current) => [{ ...data, id: data._id }, ...current])
+      window.dispatchEvent(new Event('mmp-coupons-change'))
       setForm({ code: '', type: 'percent', value: 10, note: '' })
       setError('')
     } catch (problem) { setError(problem.message) } finally { setSaving(false) }
@@ -57,15 +47,17 @@ export default function CouponManager({ coupons, setCoupons }) {
 
   async function toggle(coupon) {
     try {
-      const { data } = await request(`/api/coupons/${coupon.id}`, { method: 'PATCH', body: JSON.stringify({ active: !coupon.active }) })
+      const data = await apiRequest(`/coupons/${coupon.id}`, { method: 'PATCH', body: JSON.stringify({ active: !coupon.active }) })
       setCoupons((current) => current.map((c) => (c.id === coupon.id ? { ...data, id: data._id } : c)))
+      window.dispatchEvent(new Event('mmp-coupons-change'))
       setError('')
     } catch (problem) { setError(problem.message) }
   }
   async function remove(coupon) {
     try {
-      await request(`/api/coupons/${coupon.id}`, { method: 'DELETE' })
+      await apiRequest(`/coupons/${coupon.id}`, { method: 'DELETE' })
       setCoupons((current) => current.filter((c) => c.id !== coupon.id))
+      window.dispatchEvent(new Event('mmp-coupons-change'))
       setError('')
     } catch (problem) { setError(problem.message) }
   }

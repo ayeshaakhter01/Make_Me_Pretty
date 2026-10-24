@@ -1,0 +1,15 @@
+import express from "express";
+import { adminReviews, deleteReview, homepageReviews, moderateReview, productReviews, submitReview } from "../controllers/reviewController.js";
+import { requireAuth } from "../../../middlewares/authMiddleware.js";
+import { requireRole } from "../../../middlewares/roleMiddleware.js";
+const productRouter = express.Router();
+productRouter.get("/:productId/reviews", productReviews);
+productRouter.post("/:productId/reviews", requireAuth, submitReview);
+const adminRouter = express.Router();
+const publicRouter = express.Router();
+publicRouter.get("/featured", homepageReviews);
+adminRouter.use(requireAuth, requireRole("admin"));
+adminRouter.get("/", adminReviews);
+adminRouter.patch("/:id", moderateReview);
+adminRouter.delete("/:id", deleteReview);
+export { productRouter as productReviewRoutes, adminRouter as adminReviewRoutes, publicRouter as publicReviewRoutes };

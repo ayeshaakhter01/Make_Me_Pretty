@@ -6,12 +6,13 @@ import {
   deleteBanner,
 } from "../services/bannerService.js";
 
-import validateBanner from "../validators/bannerValidator.js";
-import { sendValidationError, sendNotFound } from "../utils/responseHelpers.js";
+import validateBanner from "../../../validators/bannerValidator.js";
+import { sendValidationError, sendNotFound } from "../../../utils/responseHelpers.js";
 
 export const getBanners = async (req, res, next) => {
   try {
-    const banners = await getActiveBanners();
+    const placement = req.query.placement === "pageHeader" ? "pageHeader" : "hero";
+    const banners = await getActiveBanners({ placement, pagePath: req.query.page });
 
     res.status(200).json({
       success: true,

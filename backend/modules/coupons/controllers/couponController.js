@@ -7,8 +7,8 @@ import {
   validateCouponForOrder,
 } from "../services/couponService.js";
 
-import validateCoupon, { validateCouponCheck } from "../validators/couponValidator.js";
-import { sendValidationError, sendNotFound } from "../utils/responseHelpers.js";
+import validateCoupon, { validateCouponCheck } from "../../../validators/couponValidator.js";
+import { sendValidationError, sendNotFound } from "../../../utils/responseHelpers.js";
 
 export const getCoupons = async (req, res, next) => {
   try {
