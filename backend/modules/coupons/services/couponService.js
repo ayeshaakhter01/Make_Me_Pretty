@@ -1,10 +1,10 @@
-import Coupon from "../models/Coupon.js";
-import AppError from "../utils/AppError.js";
+import Coupon from "../../../models/Coupon.js";
+import AppError from "../../../utils/AppError.js";
 import {
   checkCouponUsable,
   calculateCouponDiscount,
-} from "../utils/couponCalculator.js";
-import { validateCouponValueForType } from "../validators/couponValidator.js";
+} from "../../../utils/couponCalculator.js";
+import { validateCouponValueForType } from "../../../validators/couponValidator.js";
 
 const DUPLICATE_CODE_MESSAGE = "A coupon with this code already exists";
 

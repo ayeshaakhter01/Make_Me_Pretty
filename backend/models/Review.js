@@ -57,6 +57,7 @@ const reviewSchema = new mongoose.Schema(
       enum: REVIEW_STATUSES,
       default: "pending",
     },
+    isDemo: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

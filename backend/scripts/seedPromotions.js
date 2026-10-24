@@ -39,7 +39,14 @@ const runSeed = async () => {
     }
 
     for (const [index, banner] of banners.entries()) {
-      if (await Banner.exists({ src: banner.src })) {
+      const existingBanner = await Banner.findOne({ src: banner.src });
+      if (existingBanner) {
+        // Upgrade records created before placement/page-specific headers existed.
+        if (!existingBanner.placement) {
+          existingBanner.placement = "hero";
+          existingBanner.pagePath = "";
+          await existingBanner.save();
+        }
         console.log(`Banner already exists: ${banner.src}`);
         skipped++;
         continue;

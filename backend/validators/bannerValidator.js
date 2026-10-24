@@ -1,4 +1,4 @@
-import { BANNER_TYPES } from "../models/Banner.js";
+import { BANNER_TYPES, BANNER_PLACEMENTS } from "../models/Banner.js";
 import {
   isPlainObject,
   findUnknownFields,
@@ -9,6 +9,8 @@ const ALLOWED_FIELDS = [
   "title",
   "subtitle",
   "type",
+  "placement",
+  "pagePath",
   "src",
   "href",
   "active",
@@ -58,6 +60,16 @@ const validateBanner = (bannerData, isUpdate = false) => {
 
   if (bannerData.type !== undefined && !BANNER_TYPES.includes(bannerData.type)) {
     errors.push(`Type must be one of: ${BANNER_TYPES.join(", ")}`);
+  }
+
+  if (bannerData.placement !== undefined && !BANNER_PLACEMENTS.includes(bannerData.placement)) {
+    errors.push(`Placement must be one of: ${BANNER_PLACEMENTS.join(", ")}`);
+  }
+  if (bannerData.pagePath !== undefined && (typeof bannerData.pagePath !== "string" || (bannerData.pagePath && !bannerData.pagePath.startsWith("/")))) {
+    errors.push("Page path must be empty or start with /");
+  }
+  if (!isUpdate && bannerData.placement === "pageHeader" && !bannerData.pagePath) {
+    errors.push("A page path is required for page header banners");
   }
 
   if (bannerData.href !== undefined) {

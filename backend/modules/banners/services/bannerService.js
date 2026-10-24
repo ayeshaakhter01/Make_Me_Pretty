@@ -1,10 +1,16 @@
-import Banner from "../models/Banner.js";
+import Banner from "../../../models/Banner.js";
 
 const trimIfString = (value) => (typeof value === "string" ? value.trim() : value);
 
 // Public: only slides that are switched on.
-export const getActiveBanners = async () => {
-  return await Banner.find({ active: true })
+export const getActiveBanners = async ({ placement = "hero", pagePath } = {}) => {
+  const filter = { active: true, placement };
+  if (placement === "pageHeader") {
+    // Never let a missing page key turn into one global header for all pages.
+    if (!pagePath) return [];
+    filter.pagePath = pagePath;
+  }
+  return await Banner.find(filter)
     .sort({ order: 1, createdAt: -1 })
     .select("-__v");
 };
@@ -19,6 +25,8 @@ export const createBanner = async (bannerData) => {
     title: bannerData.title?.trim() ?? "",
     subtitle: bannerData.subtitle?.trim() ?? "",
     type: bannerData.type ?? "image",
+    placement: bannerData.placement ?? "hero",
+    pagePath: bannerData.pagePath ?? "",
     src: bannerData.src.trim(),
     href: bannerData.href?.trim() || "/shop",
     active: bannerData.active ?? true,
@@ -31,6 +39,8 @@ export const updateBanner = async (id, bannerData) => {
     "title",
     "subtitle",
     "type",
+    "placement",
+    "pagePath",
     "src",
     "href",
     "active",
@@ -43,6 +53,10 @@ export const updateBanner = async (id, bannerData) => {
     if (bannerData[field] !== undefined) {
       updates[field] = trimIfString(bannerData[field]);
     }
+  }
+
+  if (updates.placement === "pageHeader" && !updates.pagePath) {
+    throw Object.assign(new Error("A page path is required for a page header."), { statusCode: 400 });
   }
 
   return await Banner.findByIdAndUpdate(id, updates, {

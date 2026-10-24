@@ -1,4 +1,6 @@
 import express from "express";
+import { requireAuth } from "../../../middlewares/authMiddleware.js";
+import { requireRole } from "../../../middlewares/roleMiddleware.js";
 import {
   getCoupons,
   getAllAdminCoupons,
@@ -16,14 +18,10 @@ router.get("/", getCoupons);
 // Public: checkout asks "is this code valid, and how much does it take off?"
 router.post("/validate", validateCouponCode);
 
-// Admin: manage coupons
-// Local development only, same as the blog routes.
-// TODO: protect with Akhi's auth + admin role middleware before deployment.
-if (process.env.NODE_ENV !== "production") {
-  router.get("/admin/all", getAllAdminCoupons);
-  router.post("/", createCouponRecord);
-  router.patch("/:id", updateCouponRecord);
-  router.delete("/:id", deleteCouponRecord);
-}
+router.use(requireAuth, requireRole("admin"));
+router.get("/admin/all", getAllAdminCoupons);
+router.post("/", createCouponRecord);
+router.patch("/:id", updateCouponRecord);
+router.delete("/:id", deleteCouponRecord);
 
 export default router;
