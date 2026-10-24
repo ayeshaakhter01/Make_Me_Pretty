@@ -2,6 +2,7 @@ import { useState } from 'react'
 import BlogForm from './BlogForm.jsx'
 import { imageSrc } from './imageHelpers.js'
 import { card, cx, roseButton } from './adminHelpers.js'
+import { apiFetch } from '../../api.js'
 
 /* BLOG: write, edit, reorder, hide and delete posts.
    The order of this list is the order on the shop's "Our Blog" section,
@@ -27,10 +28,10 @@ export default function BlogManager({ posts, setPosts }) {
     }
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         existing
-          ? `http://localhost:5000/api/blogs/${post.id}`
-          : 'http://localhost:5000/api/blogs',
+          ? `/blogs/${post.id}`
+          : '/blogs',
         {
           method: existing ? 'PATCH' : 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -76,7 +77,7 @@ export default function BlogManager({ posts, setPosts }) {
     const nextActive = !post.active
 
     try {
-      const response = await fetch(`http://localhost:5000/api/blogs/${id}`, {
+      const response = await apiFetch(`/blogs/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -106,8 +107,8 @@ export default function BlogManager({ posts, setPosts }) {
     if (!window.confirm(`Delete "${post.title}"?`)) return
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/blogs/${post.id}`,
+      const response = await apiFetch(
+        `/blogs/${post.id}`,
         { method: 'DELETE' }
       )
 
@@ -140,7 +141,7 @@ export default function BlogManager({ posts, setPosts }) {
     try {
       const responses = await Promise.all(
         reordered.map((post) =>
-          fetch(`http://localhost:5000/api/blogs/${post.id}`, {
+          apiFetch(`/blogs/${post.id}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ order: post.order }),

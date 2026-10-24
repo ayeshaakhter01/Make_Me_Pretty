@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { cx, roseButton, timeLabel } from './adminHelpers.js'
+import { apiRequest } from '../../api.js'
 
 /* =============================================================================
    CHAT about ONE order between the admin and the delivery partner.
@@ -7,28 +8,44 @@ import { cx, roseButton, timeLabel } from './adminHelpers.js'
    Every message is saved as { id, orderId, from, name, kind, text, at }.
    kind = 'message' (normal), 'issue' (a reported problem) or 'location' (a map link)
 ============================================================================= */
-export default function OrderMessages({ order, messages, setMessages, me }) {
+export default function OrderMessages({ order, me }) {
   const [text, setText] = useState('')
+  const [messages, setMessages] = useState([])
+  const [error, setError] = useState('')
   const endRef = useRef(null)
-  const thread = messages.filter((message) => message.orderId === order.id)
+  const endpoint = me.from === 'admin' ? `/orders/admin/${order.id}/messages` : `/delivery/assignments/${order.id}/messages`
+  const thread = messages
+
+  useEffect(() => {
+    let active = true
+    const load = () => apiRequest(endpoint).then((saved) => {
+      if (active) setMessages(saved.map((message) => ({ ...message, id: message._id, from: message.role === 'deliveryPartner' ? 'partner' : 'admin', name: message.senderName })))
+    }).catch((problem) => { if (active) setError(problem.message) })
+    load()
+    const timer = window.setInterval(load, 4000)
+    return () => { active = false; window.clearInterval(timer) }
+  }, [endpoint])
 
   /* scroll to the newest message */
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [thread.length])
 
-  function send(event) {
+  async function send(event) {
     event.preventDefault()
     if (!text.trim()) return
-    setMessages((current) => [
-      ...current,
-      { id: `m-${Date.now()}`, orderId: order.id, from: me.from, name: me.name, kind: 'message', text: text.trim(), at: new Date().toISOString() },
-    ])
-    setText('')
+    try {
+      await apiRequest(endpoint, { method: 'POST', body: JSON.stringify({ kind: 'message', text: text.trim() }) })
+      setText('')
+      const saved = await apiRequest(endpoint)
+      setMessages(saved.map((message) => ({ ...message, id: message._id, from: message.role === 'deliveryPartner' ? 'partner' : 'admin', name: message.senderName })))
+      setError('')
+    } catch (problem) { setError(problem.message) }
   }
 
   return (
     <div>
+      {error && <p role="alert" className="mb-2 text-xs text-lowstock-text">{error}</p>}
       <div className="mb-3 max-h-72 min-h-[140px] overflow-y-auto rounded-2xl border border-line bg-cream p-3">
         {thread.length === 0 && <p className="py-8 text-center text-sm text-ink-soft">No messages yet. Say hello.</p>}
         {thread.map((message) => {
