@@ -1,0 +1,16 @@
+import express from "express";
+import { createProduct, deleteProduct, getProduct, listAdminProducts, listBestSellers, listBrands, listCategories, listProducts, updateProduct } from "../controllers/catalogController.js";
+import { requireAuth } from "../../../middlewares/authMiddleware.js";
+import { requireRole } from "../../../middlewares/roleMiddleware.js";
+export const productRoutes = express.Router();
+productRoutes.get("/", listProducts);
+productRoutes.get("/best-sellers", listBestSellers);
+productRoutes.get("/admin/all", requireAuth, requireRole("admin"), listAdminProducts);
+productRoutes.get("/:id", getProduct);
+productRoutes.post("/", requireAuth, requireRole("admin"), createProduct);
+productRoutes.patch("/:id", requireAuth, requireRole("admin"), updateProduct);
+productRoutes.delete("/:id", requireAuth, requireRole("admin"), deleteProduct);
+export const categoryRoutes = express.Router();
+categoryRoutes.get("/", listCategories);
+export const brandRoutes = express.Router();
+brandRoutes.get("/", listBrands);

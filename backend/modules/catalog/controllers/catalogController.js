@@ -1,0 +1,11 @@
+import * as service from "../services/catalogService.js";
+const wrap = (fn, status = 200) => async (req, res, next) => { try { const data = await fn(req); res.status(status).json({ success: true, data }); } catch (error) { next(error); } };
+export const listProducts = wrap((req) => service.listProducts(req.query));
+export const listBestSellers = wrap(() => service.listBestSellers());
+export const listAdminProducts = wrap(() => service.listAdminProducts());
+export const getProduct = wrap((req) => service.getProduct(req.params.id));
+export const createProduct = wrap((req) => service.createProduct(req.body), 201);
+export const updateProduct = wrap((req) => service.updateProduct(req.params.id, req.body));
+export const deleteProduct = wrap((req) => service.deleteProduct(req.params.id));
+export const listCategories = wrap((req) => service.listCategories());
+export const listBrands = wrap((req) => service.listBrands());
