@@ -7,14 +7,16 @@ import {
 } from "../controllers/addressController.js";
 import {
   getProfile,
-  updateProfile
+  updateProfile,
+  changePassword
 } from "../controllers/userController.js";
-import { requireAuth } from "../middlewares/authMiddleware.js";
+import { requireAuth } from "../../../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
 router.get("/me", requireAuth, getProfile);
 router.patch("/me", requireAuth, updateProfile);
+router.patch("/me/password", requireAuth, changePassword);
 
 router.get("/me/addresses", requireAuth, getAddresses);
 router.post("/me/addresses", requireAuth, addAddress);

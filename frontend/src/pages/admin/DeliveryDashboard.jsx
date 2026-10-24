@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Modal from '../../components/admin/Modal.jsx'
 import OrderMessages from '../../components/admin/OrderMessages.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
-import { useStoredState } from '../../components/admin/useStoredState.js'
-import { INITIAL_ORDERS } from '../../data/adminSeed.js'
-import { DELIVERED, KEYS, ORDER_STATUSES, card, cx, ghostButton, money, roseButton, timeLabel } from '../../components/admin/adminHelpers.js'
+import { DELIVERED, ORDER_STATUSES, card, cx, ghostButton, money, roseButton, timeLabel } from '../../components/admin/adminHelpers.js'
+import { apiRequest } from '../../api.js'
+import StaffAccountPanel from '../../components/admin/StaffAccountPanel.jsx'
 
 /* The three steps a delivery partner can press, and the order status each one sets */
 const STEPS = [
@@ -24,7 +24,7 @@ const PROBLEMS = [
 const FILTERS = ['To deliver', 'Delivered', 'All']
 
 /* cash on delivery that has not been collected yet */
-const needsCash = (order) => order.method === 'COD' && order.pay !== 'Paid'
+const needsCash = (order) => order.method === 'Cash on Delivery' && order.pay !== 'Paid'
 
 /* =============================================================================
    DELIVERY PARTNER DASHBOARD
@@ -34,15 +34,33 @@ const needsCash = (order) => order.method === 'COD' && order.pay !== 'Paid'
    location. Orders and messages are the SAME saved lists the admin uses.
 ============================================================================= */
 export default function DeliveryDashboard({ session, onSignOut }) {
-  const [orders, setOrders] = useStoredState(KEYS.orders, INITIAL_ORDERS)
-  const [messages, setMessages] = useStoredState(KEYS.messages, [])
+  const [orders, setOrders] = useState([])
   const [filter, setFilter] = useState('To deliver')
   const [chatId, setChatId] = useState(null)
   const [problemId, setProblemId] = useState(null)
   const [problem, setProblem] = useState({ reason: PROBLEMS[0], note: '' })
   const [notice, setNotice] = useState('')
+  const [accountOpen, setAccountOpen] = useState(false)
 
-  const mine = orders.filter((order) => order.partner === session.name)
+  useEffect(() => {
+    let current = true
+    apiRequest('/delivery/assignments')
+      .then((saved) => { if (current) setOrders(saved.map((order) => ({
+        ...order, id: order._id, date: new Date(order.createdAt).toLocaleDateString(),
+        name: order.address?.recipientName || order.customer?.name || 'Customer', phone: order.address?.phone || order.customer?.phone || '',
+        address: [order.address?.addressLine, order.address?.area, order.address?.city].filter(Boolean).join(', '),
+        lines: order.items.map((item) => ({ name: item.name, qty: item.quantity, price: item.price })),
+        items: order.items.map((item) => `${item.name} × ${item.quantity}`).join(', '),
+        pay: order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid', method: order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod,
+        status: ['pending', 'confirmed', 'shipped', 'outForDelivery', 'delivered', 'cancelled'].indexOf(order.status),
+        messageCount: order.messages?.length || 0,
+        issue: order.issue || '',
+      }))) })
+      .catch((problem) => { if (current) setNotice(problem.message) })
+    return () => { current = false }
+  }, [])
+
+  const mine = orders
   const open = mine.filter((order) => order.status < DELIVERED)
   const done = mine.filter((order) => order.status === DELIVERED)
   const cashToCollect = open.filter(needsCash).reduce((sum, order) => sum + order.total, 0)
@@ -52,18 +70,29 @@ export default function DeliveryDashboard({ session, onSignOut }) {
   const problemOrder = orders.find((order) => order.id === problemId)
 
   /* change one order, and remember the step with the time */
-  const change = (id, changes, stepLabel) =>
+  const change = (id, changes, stepLabel) => {
+    const order = orders.find((item) => item.id === id)
+    if (changes.status !== undefined && order?._id) {
+      const status = ['pending', 'confirmed', 'shipped', 'outForDelivery', 'delivered', 'cancelled'][changes.status]
+      apiRequest(`/delivery/assignments/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) })
+        .then(() => setOrders((current) => current.map((item) => item.id === id ? { ...item, ...changes } : item)))
+        .catch((problem) => setNotice(problem.message))
+      return
+    }
     setOrders((current) => current.map((order) => {
       if (order.id !== id) return order
       const history = stepLabel ? [...(order.history ?? []), { label: stepLabel, at: new Date().toISOString() }] : order.history
       return { ...order, ...changes, history }
     }))
+  }
 
-  const addMessage = (order, kind, text, extra = {}) =>
-    setMessages((current) => [
-      ...current,
-      { id: `m-${Date.now()}`, orderId: order.id, from: 'partner', name: session.name, kind, text, at: new Date().toISOString(), ...extra },
-    ])
+  const addMessage = async (order, kind, text, extra = {}) => {
+    try {
+      await apiRequest(`/delivery/assignments/${order.id}/messages`, { method: 'POST', body: JSON.stringify({ kind, text, link: extra.link || '' }) })
+      setOrders((current) => current.map((item) => item.id === order.id ? { ...item, messageCount: (item.messageCount || 0) + 1, ...(kind === 'issue' ? { issue: text } : {}) } : item))
+      setNotice('Update sent to the admin.')
+    } catch (requestError) { setNotice(requestError.message) }
+  }
 
   function reportProblem(event) {
     event.preventDefault()
@@ -98,9 +127,12 @@ export default function DeliveryDashboard({ session, onSignOut }) {
           </div>
           <div className="flex gap-4 text-sm sm:ml-auto">
             <Link to="/" className="text-ink-soft underline hover:text-rose">← View shop</Link>
+            <button type="button" onClick={() => setAccountOpen((open) => !open)} className="text-ink-soft underline hover:text-rose">{accountOpen ? 'Close account settings' : 'My account'}</button>
             <button type="button" onClick={onSignOut} className="text-rose underline">Sign out</button>
           </div>
         </div>
+
+        {accountOpen && <StaffAccountPanel />}
 
         <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label="Assigned" value={mine.length} />
@@ -127,7 +159,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
         <div className="grid gap-4">
           {shown.length === 0 && <p className={`${card} p-6 text-sm text-ink-soft`}>No orders here.</p>}
           {shown.map((order) => {
-            const chatCount = messages.filter((message) => message.orderId === order.id).length
+            const chatCount = order.messageCount || 0
             const finished = order.status >= DELIVERED
             const cash = needsCash(order)
             return (
@@ -153,10 +185,10 @@ export default function DeliveryDashboard({ session, onSignOut }) {
                 </div>
 
                 {/* cash on delivery */}
-                {cash && !finished && (
+        {cash && !finished && (
                   <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-lowstock-bg px-4 py-3 text-sm text-lowstock-text">
                     <span>Collect <strong>{money(order.total)}</strong> cash from the customer.</span>
-                    <button type="button" onClick={() => change(order.id, { pay: 'Paid' }, 'Cash collected')} className="rounded-full bg-ink px-4 py-1.5 text-[12px] font-medium text-ivory transition-colors hover:bg-rose-deep">Mark cash collected</button>
+                    <button type="button" disabled={order.status < 3} title={order.status < 3 ? 'Mark cash after reaching the customer' : undefined} onClick={() => apiRequest(`/delivery/assignments/${order.id}/collect-cod`, { method: 'POST' }).then(() => setOrders((current) => current.map((item) => item.id === order.id ? { ...item, pay: 'Paid' } : item))).catch((problem) => setNotice(problem.message))} className="rounded-full bg-ink px-4 py-1.5 text-[12px] font-medium text-ivory transition-colors hover:bg-rose-deep disabled:opacity-50">Mark cash collected</button>
                   </div>
                 )}
 
@@ -203,7 +235,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
 
       {chatOrder && (
         <Modal title={`Chat with admin · ${chatOrder.id}`} onClose={() => setChatId(null)}>
-          <OrderMessages order={chatOrder} messages={messages} setMessages={setMessages} me={{ from: 'partner', name: session.name }} />
+          <OrderMessages order={chatOrder} me={{ from: 'partner', name: session.name }} />
         </Modal>
       )}
 

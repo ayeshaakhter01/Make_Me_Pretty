@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import StatCard from './StatCard.jsx'
 import { CANCELLED, card, cx, money, td, th, timeAgo } from './adminHelpers.js'
+import { apiRequest } from '../../api.js'
 
 /* One horizontal bar in the "most wishlisted / most added to cart" lists. */
 function RankBar({ label, note, value, max, unit }) {
@@ -43,10 +44,23 @@ const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
    - Abandoned carts (items left in a cart) and the products added to carts most.
    - Wishlist saves and the most wishlisted products.
    Everything is worked out from the lists the dashboard already holds. */
-export default function BehaviourPanel({ users, orders, products, carts, wishlists }) {
+export default function BehaviourPanel() {
+  const [source, setSource] = useState({ users: [], orders: [], products: [], carts: [], wishlists: [] })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [view, setView] = useState('customers') // customers | carts | wishlist
   const [open, setOpen] = useState(null) // id of the customer row that is expanded
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/admin/reports/behaviour').then((data) => { if (!cancelled) setSource(data) })
+      .catch((problem) => { if (!cancelled) setError(problem.message) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const { users, orders, products, carts, wishlists } = source
 
   const data = useMemo(() => {
     const productById = new Map(products.map((p) => [String(p.id), p]))
@@ -93,9 +107,9 @@ export default function BehaviourPanel({ users, orders, products, carts, wishlis
     /* one row per customer account.
        Orders are matched by name for now; once the backend gives every order a user id, match on that. */
     const customers = users
-      .filter((u) => u.role === 'Customer')
+      .filter((u) => u.role?.toLowerCase() === 'customer')
       .map((u) => {
-        const placed = orders.filter((o) => o.name === u.name && o.status !== CANCELLED)
+        const placed = orders.filter((o) => o.customerId === u.id && o.status !== CANCELLED)
         const bought = new Map()
         placed.forEach((o) => (o.lines ?? []).forEach((l) => bought.set(l.name, (bought.get(l.name) ?? 0) + l.qty)))
         const cart = pricedCarts.find((c) => c.userId === u.id)
@@ -130,6 +144,8 @@ export default function BehaviourPanel({ users, orders, products, carts, wishlis
 
   return (
     <div className="grid gap-6">
+      {loading && <p className={`${card} p-5 text-sm text-ink-soft`}>Loading account, order, cart and wishlist activity from MongoDB…</p>}
+      {error && <p role="alert" className="text-sm text-lowstock-text">{error}</p>}
       {/* averages */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Avg. orders / customer" value={averages.orders.toFixed(1)} />

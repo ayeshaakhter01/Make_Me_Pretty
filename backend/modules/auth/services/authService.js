@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import User from "../models/User.js";
+import User from "../../../models/User.js";
 
 function createToken(user) {
   if (!process.env.JWT_SECRET) {
@@ -25,6 +25,11 @@ function publicUser(user) {
 }
 
 export async function registerUser({ name, email, password }) {
+  if (!process.env.JWT_SECRET?.trim()) {
+    const error = new Error("Authentication is not configured. Add JWT_SECRET to backend/.env and restart the backend.");
+    error.statusCode = 503;
+    throw error;
+  }
   if (!name?.trim() || !email?.trim() || !password) {
     const error = new Error("Name, email, and password are required.");
     error.statusCode = 400;
@@ -57,6 +62,9 @@ export async function registerUser({ name, email, password }) {
     token: createToken(user)
   };
 }
+
+// Create staff accounts out of band (for example with the seed script). Public
+// registration must never accept a caller supplied role.
 
 export async function loginUser({ email, password }) {
   if (!email?.trim() || !password) {

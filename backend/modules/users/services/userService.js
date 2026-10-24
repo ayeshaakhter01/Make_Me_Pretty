@@ -1,4 +1,4 @@
-import User from "../models/User.js";
+import User from "../../../models/User.js";
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -51,8 +51,30 @@ export async function updateMyProfile(userId, changes = {}) {
     user.phone = changes.phone?.trim() || undefined;
   }
 
+  if (Object.hasOwn(changes, "email")) {
+    if (typeof changes.email !== "string" || !changes.email.trim()) {
+      throw createError("Email cannot be empty.", 400);
+    }
+    const email = changes.email.trim().toLowerCase();
+    const duplicate = await User.exists({ email, _id: { $ne: user._id } });
+    if (duplicate) throw createError("Another account already uses this email.", 409);
+    user.email = email;
+  }
+
   await user.save();
   return publicUser(user);
+}
+
+export async function changeMyPassword(userId, { currentPassword, newPassword } = {}) {
+  if (typeof currentPassword !== "string" || !currentPassword || typeof newPassword !== "string") {
+    throw createError("Current and new passwords are required.", 400);
+  }
+  if (newPassword.length < 8) throw createError("New password must be at least 8 characters.", 400);
+  const user = await User.findById(userId).select("+password");
+  if (!user) throw createError("User account was not found.", 404);
+  if (!(await user.comparePassword(currentPassword))) throw createError("Current password is incorrect.", 401);
+  user.password = newPassword;
+  await user.save();
 }
 const USER_ROLES = ["customer", "admin", "deliveryPartner"];
 
