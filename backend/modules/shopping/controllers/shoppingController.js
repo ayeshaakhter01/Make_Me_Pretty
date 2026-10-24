@@ -1,0 +1,10 @@
+import * as service from "../services/shoppingService.js";
+const wrap = (fn) => async (req, res, next) => { try { res.json({ success: true, data: await fn(req) }); } catch (error) { next(error); } };
+export const getCart = wrap((req) => service.getCart(req.user._id));
+export const addCartItem = wrap((req) => service.addCartItem(req.user._id, req.body));
+export const setCartItem = wrap((req) => service.setCartItem(req.user._id, req.params.productId, req.body.quantity));
+export const removeCartItem = wrap((req) => service.removeCartItem(req.user._id, req.params.productId));
+export const clearCart = wrap((req) => service.clearCart(req.user._id));
+export const getWishlist = wrap((req) => service.getWishlist(req.user._id));
+export const addWishlistItem = wrap((req) => service.addWishlistItem(req.user._id, req.body.productId));
+export const removeWishlistItem = wrap((req) => service.removeWishlistItem(req.user._id, req.params.productId));

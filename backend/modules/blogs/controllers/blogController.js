@@ -8,7 +8,7 @@ import {
   deleteBlog,
 } from "../services/blogService.js";
 
-import validateBlog from "../validators/blogValidator.js";
+import validateBlog from "../../../validators/blogValidator.js";
 
 export const getBlogs = async (req, res, next) => {
   try {

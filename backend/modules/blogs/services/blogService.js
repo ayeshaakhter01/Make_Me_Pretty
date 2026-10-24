@@ -1,5 +1,5 @@
 
-import BlogPost from "../models/BlogPost.js";
+import BlogPost from "../../../models/BlogPost.js";
 
 
 const generateSlug = (title) => {

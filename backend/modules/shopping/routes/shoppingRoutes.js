@@ -1,0 +1,15 @@
+import express from "express";
+import { addCartItem, addWishlistItem, clearCart, getCart, getWishlist, removeCartItem, removeWishlistItem, setCartItem } from "../controllers/shoppingController.js";
+import { requireAuth } from "../../../middlewares/authMiddleware.js";
+export const cartRoutes = express.Router();
+cartRoutes.use(requireAuth);
+cartRoutes.get("/", getCart);
+cartRoutes.delete("/", clearCart);
+cartRoutes.post("/items", addCartItem);
+cartRoutes.patch("/items/:productId", setCartItem);
+cartRoutes.delete("/items/:productId", removeCartItem);
+export const wishlistRoutes = express.Router();
+wishlistRoutes.use(requireAuth);
+wishlistRoutes.get("/", getWishlist);
+wishlistRoutes.post("/items", addWishlistItem);
+wishlistRoutes.delete("/items/:productId", removeWishlistItem);
