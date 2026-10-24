@@ -5,8 +5,9 @@ import Icon from '../components/ui/Icon.jsx'
 import SkinAdvisorForm from '../components/ai/SkinAdvisorForm.jsx'
 import RecommendationCard from '../components/ai/RecommendationCard.jsx'
 import AdvisorDisclaimer from '../components/ai/AdvisorDisclaimer.jsx'
-import { getRecommendations } from '../data/skinAdvisor.js'
-import { getProduct } from '../data/products.js'
+import { apiRequest } from '../api.js'
+import { useCatalog } from '../context/useCatalog.js'
+import { CONCERNS } from '../data/skinAdvisor.js'
 
 function LoadingCards() {
   return (
@@ -35,6 +36,7 @@ function EmptyResult() {
 }
 
 export default function SkinAdvisorPage() {
+  const { products } = useCatalog()
   const [status, setStatus] = useState('idle') // idle | loading | done | error
   const [result, setResult] = useState(null)
   const resultsRef = useRef(null)
@@ -48,9 +50,9 @@ export default function SkinAdvisorPage() {
     const id = ++requestId.current
     setStatus('loading')
     try {
-      const data = await getRecommendations(input)
+      const data = await apiRequest('/skin-advisor/recommendations', { method: 'POST', body: JSON.stringify({ skinType: 'unspecified', concerns: (input.concernIds || []).map((id) => CONCERNS.find((concern) => concern.id === id)?.label).filter(Boolean), preferences: input.text || '' }) })
       if (id !== requestId.current) return
-      setResult(data)
+      setResult({ ...data, picks: data.recommendations })
       setStatus('done')
     } catch {
       if (id === requestId.current) setStatus('error')
@@ -58,7 +60,7 @@ export default function SkinAdvisorPage() {
   }
 
   const picks = (result?.picks ?? [])
-    .map((pick) => ({ ...pick, product: getProduct(pick.productId) }))
+    .map((pick) => ({ ...pick, product: products.find((item) => item.id === String(pick.productId)) }))
     .filter((pick) => pick.product)
 
   return (
@@ -85,6 +87,7 @@ export default function SkinAdvisorPage() {
           <>
             <div className="mb-8 text-center">
               <h2 className="font-serif text-3xl">Your personalised picks</h2>
+              <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-rose">{result.mode === 'ai' ? 'OpenAI recommendations' : 'Catalog matching · AI unavailable'}</p>
               <ul className="mt-4 flex flex-wrap justify-center gap-2">{result.concerns.map((concern) => <li key={concern.id} className="rounded-full border border-rose/30 bg-pink-soft px-3.5 py-1 text-xs font-medium text-rose-deep">{concern.label}</li>)}</ul>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-ink-soft">{result.summary}</p>
             </div>

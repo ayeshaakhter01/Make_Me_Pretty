@@ -4,8 +4,9 @@ import { useCart } from '../../context/useCart.js'
 import { Button } from '../ui/Button.jsx'
 import Icon from '../ui/Icon.jsx'
 import ProductArtwork from '../products/ProductArtwork.jsx'
-import { CONCERNS, getRecommendations } from '../../data/skinAdvisor.js'
-import { getProduct } from '../../data/products.js'
+import { CONCERNS } from '../../data/skinAdvisor.js'
+import { apiRequest } from '../../api.js'
+import { useCatalog } from '../../context/useCatalog.js'
 
 const LABEL_KEY = 'mmp_advisor_label_hidden'
 const HIDDEN_ON = ['/skin-advisor', '/checkout'] // pages where the pop-up would only be in the way
@@ -44,6 +45,7 @@ function MiniPick({ product, reason }) {
 }
 
 export default function AdvisorPopup() {
+  const { products } = useCatalog()
   const { pathname } = useLocation()
   const [open, setOpen] = useState(false)
   const [labelHidden, setLabelHidden] = useState(readLabelHidden)
@@ -87,9 +89,9 @@ export default function AdvisorPopup() {
     const id = ++requestId.current
     setView('loading')
     try {
-      const data = await getRecommendations({ text: text.trim(), concernIds: chosen })
+      const data = await apiRequest('/skin-advisor/recommendations', { method: 'POST', body: JSON.stringify({ skinType: 'unspecified', concerns: chosen.map((id) => CONCERNS.find((concern) => concern.id === id)?.label).filter(Boolean), preferences: text.trim() }) })
       if (id !== requestId.current) return
-      setResult(data)
+      setResult({ ...data, picks: data.recommendations })
       setView('results')
     } catch {
       if (id === requestId.current) setView('error')
@@ -102,7 +104,7 @@ export default function AdvisorPopup() {
     setView('ask')
   }
 
-  const picks = (result?.picks ?? []).map((pick) => ({ ...pick, product: getProduct(pick.productId) })).filter((pick) => pick.product)
+  const picks = (result?.picks ?? []).map((pick) => ({ ...pick, product: products.find((item) => item.id === String(pick.productId)) })).filter((pick) => pick.product)
   const bubble = 'rounded-2xl rounded-tl-md bg-pink-soft px-4 py-3 text-[13px] leading-5 text-ink'
 
   return (
@@ -143,6 +145,7 @@ export default function AdvisorPopup() {
                 {picks.length === 0
                   ? <p className={bubble}>I couldn’t spot a specific concern yet. Try describing how your skin looks or feels (oily, dry, red, dull…).</p>
                   : <>
+                      <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-rose">{result.mode === 'ai' ? 'OpenAI recommendations' : 'Catalog matching · AI unavailable'}</p>
                       <p className={bubble}>{result.summary}</p>
                       <ul className="space-y-3">{picks.map((pick) => <MiniPick key={pick.productId} product={pick.product} reason={pick.reason} />)}</ul>
                     </>}

@@ -5,7 +5,7 @@ import FilterPanel from '../components/products/FilterPanel.jsx'
 import { getProductFacets, matchesProductFilters } from '../data/productFilters.js'
 import PageContainer from '../components/ui/PageContainer.jsx'
 import TrustMarquee from '../components/home/TrustMarquee.jsx'
-import { products } from '../data/products.js'
+import { useCatalog } from '../context/useCatalog.js'
 
 const SORTS = [
   { value: 'featured', label: 'Featured' },
@@ -16,6 +16,7 @@ const SORTS = [
 const cleanFilters = () => ({ inStock: false, outStock: false, priceMin: '', priceMax: '', types: new Set(), brands: new Set(), skins: new Set() })
 
 export default function ShopPage({ initialCategory = null, showOffers: fixedOffers = false }) {
+  const { products } = useCatalog()
   const [params, setParams] = useSearchParams()
   const [filters, setFilters] = useState(cleanFilters)
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -44,7 +45,7 @@ export default function ShopPage({ initialCategory = null, showOffers: fixedOffe
       if (normalizedQuery && ![product.name, product.type, product.category].some((value) => value.toLowerCase().includes(normalizedQuery))) return false
       return true
     })
-  }, [brandParam, category, offersOnly, query, typeParam])
+  }, [brandParam, category, offersOnly, products, query, typeParam])
   const facets = useMemo(() => getProductFacets(pool), [pool])
   const visibleProducts = useMemo(() => {
     let list = pool.filter((product) => matchesProductFilters(product, filters))
