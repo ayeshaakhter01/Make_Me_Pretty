@@ -9,8 +9,8 @@ import {
   editAddressForUser,
   editUserDetails
 } from "../controllers/adminUserController.js";
-import { requireAuth } from "../middlewares/authMiddleware.js";
-import { requireRole } from "../middlewares/roleMiddleware.js";
+import { requireAuth } from "../../../middlewares/authMiddleware.js";
+import { requireRole } from "../../../middlewares/roleMiddleware.js";
 
 const router = express.Router();
 

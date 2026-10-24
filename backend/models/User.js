@@ -42,7 +42,8 @@ const userSchema = new mongoose.Schema(
       default: "customer"
     },
     phone: { type: String, trim: true },
-    addresses: { type: [addressSchema], default: [] }
+    addresses: { type: [addressSchema], default: [] },
+    isDemo: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

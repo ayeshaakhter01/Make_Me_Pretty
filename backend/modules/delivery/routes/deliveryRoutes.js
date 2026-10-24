@@ -1,0 +1,13 @@
+import express from "express";
+import { assignment, assignments, collectCod, getOrderMessages, postOrderMessage, updateStatus } from "../controllers/deliveryController.js";
+import { requireAuth } from "../../../middlewares/authMiddleware.js";
+import { requireRole } from "../../../middlewares/roleMiddleware.js";
+const router = express.Router();
+router.use(requireAuth, requireRole("deliveryPartner"));
+router.get("/assignments", assignments);
+router.get("/assignments/:id", assignment);
+router.get("/assignments/:id/messages", getOrderMessages);
+router.post("/assignments/:id/messages", postOrderMessage);
+router.patch("/assignments/:id/status", updateStatus);
+router.post("/assignments/:id/collect-cod", collectCod);
+export default router;
