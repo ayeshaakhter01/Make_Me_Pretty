@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiRequest, loadAuthSession } from '../../api.js'
 
 const errorInput = '!border-rose-deep !shadow-[0_0_0_3px_rgba(190,90,110,.12)]'
 
@@ -47,14 +48,13 @@ export default function ProductReviewForm({ product, onSubmit }) {
     function validate() {
         const next = {}
         if (!rating) next.rating = 'Please choose a star rating.'
-        if (!name.trim()) next.name = 'Please enter your name.'
         if (!text.trim()) next.text = 'Please write your review.'
         else if (text.trim().length < 10) next.text = 'Please write at least 10 characters.'
         setErrors(next)
         return next
     }
 
-    function handleSubmit(event) {
+    async function handleSubmit(event) {
         event.preventDefault()
         const next = validate()
         if (Object.keys(next).length) {
@@ -62,8 +62,13 @@ export default function ProductReviewForm({ product, onSubmit }) {
             else if (next.text) document.getElementById('pr-text')?.focus()
             return
         }
-        onSubmit?.({ name: name.trim(), title: title.trim(), text: text.trim(), rating, pending: true })
-        setSubmitted(true)
+        const session = loadAuthSession()
+        if (!session?.token) { setErrors({ server: 'Sign in to submit a review.' }); return }
+        try {
+            await apiRequest(`/products/${product.id}/reviews`, { method: 'POST', body: JSON.stringify({ rating, title: title.trim(), text: text.trim() }) })
+            onSubmit?.({ name: session.user?.name || name.trim(), title: title.trim(), text: text.trim(), rating, pending: true })
+            setSubmitted(true)
+        } catch (problem) { setErrors({ server: problem.message }) }
     }
 
     return <>
@@ -91,8 +96,9 @@ export default function ProductReviewForm({ product, onSubmit }) {
                         <FieldError id="pr-rating-error" message={errors.rating} />
                     </div>
                     <div>
-                        <label htmlFor="pr-name" className="field-label">Your name <span className="text-rose">*</span></label>
-                        <input id="pr-name" value={name} onChange={(event) => { setName(event.target.value); clearError('name') }} aria-required="true" aria-invalid={Boolean(errors.name)} aria-describedby={errors.name ? 'pr-name-error' : undefined} autoComplete="name" placeholder="Ayesha Rahman" className={`bg-white! ${errors.name ? errorInput : ''}`} />
+                        <label htmlFor="pr-name" className="field-label">Your account name</label>
+                        <input id="pr-name" value={loadAuthSession()?.user?.name || ''} readOnly aria-describedby="pr-account-hint" autoComplete="name" placeholder="Sign in to review" className="bg-white!" />
+                        <span id="pr-account-hint" className="text-xs text-ink-soft">Reviews are submitted under your signed-in account.</span>
                         <FieldError id="pr-name-error" message={errors.name} />
                     </div>
                     <div>
@@ -104,6 +110,7 @@ export default function ProductReviewForm({ product, onSubmit }) {
                         <textarea id="pr-text" value={text} onChange={(event) => { setText(event.target.value); clearError('text') }} aria-required="true" aria-invalid={Boolean(errors.text)} aria-describedby={errors.text ? 'pr-text-error' : undefined} rows="4" placeholder="How did it feel on your skin? Would you repurchase?" className={`bg-white! rounded-[18px]! py-3! resize-y ${errors.text ? errorInput : ''}`} />
                         <FieldError id="pr-text-error" message={errors.text} />
                     </div>
+                    {errors.server && <p role="alert" className="text-sm text-lowstock-text">{errors.server}{errors.server.includes('Sign in') && <> <a href="/account" className="underline">Sign in</a></>}</p>}
                     <button type="submit" className="w-full rounded-full bg-rose px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-rose-deep">Submit review</button>
                 </form>}
             </section>

@@ -1,16 +1,18 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { DELIVERED, CANCELLED, card, money, roseButton } from './adminHelpers.js'
 
 /* SALES REPORT built from the orders:
    - revenue per day (paid orders only), - best sellers (units sold), - CSV download. */
 export default function AnalyticsPanel({ orders }) {
+  const [selectedDay, setSelectedDay] = useState(null)
   const { days, total, max } = useMemo(() => {
     const byDay = new Map()
     orders.filter((o) => o.pay === 'Paid' && o.status !== CANCELLED).forEach((o) => {
       byDay.set(o.date, (byDay.get(o.date) ?? 0) + o.total)
     })
     const list = [...byDay.entries()].map(([label, amount]) => ({ label, amount })).reverse() // oldest first
-    return { days: list, total: list.reduce((sum, d) => sum + d.amount, 0), max: Math.max(1, ...list.map((d) => d.amount)) }
+    const visibleDays = list.slice(-14)
+    return { days: visibleDays, total: list.reduce((sum, d) => sum + d.amount, 0), max: Math.max(1, ...visibleDays.map((d) => d.amount)) }
   }, [orders])
 
   const bestSellers = useMemo(() => {
@@ -20,15 +22,16 @@ export default function AnalyticsPanel({ orders }) {
   }, [orders])
 
   const delivered = orders.filter((o) => o.status === DELIVERED).length
+  const reportOrders = orders.filter((order) => order.pay === 'Paid' && order.status !== CANCELLED && (!selectedDay || order.date === selectedDay))
 
   /* build a .csv text and download it */
   function downloadReport() {
     const rows = [['Order', 'Date', 'Customer', 'Items', 'Total', 'Payment', 'Method']]
-    orders.forEach((o) => rows.push([o.id, o.date, o.name, o.items, o.total, o.pay, o.method]))
+    reportOrders.forEach((o) => rows.push([o.id, o.date, o.name, o.items, o.total, o.pay, o.method]))
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
     const link = document.createElement('a')
     link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-    link.download = 'make-me-pretty-sales-report.csv'
+    link.download = `make-me-pretty-sales-${selectedDay ? selectedDay.replaceAll('/', '-') : 'all-days'}.csv`
     link.click()
     URL.revokeObjectURL(link.href)
   }
@@ -43,21 +46,22 @@ export default function AnalyticsPanel({ orders }) {
         {days.length === 0 ? (
           <p className="text-sm text-ink-soft">No paid orders yet.</p>
         ) : (
-          <div className="flex h-40 items-end gap-2.5">
+          <div className="grid h-[166px] w-full grid-flow-col auto-cols-fr items-end gap-1 overflow-hidden" aria-label="Daily paid revenue. Select a bar to filter the sales report.">
             {days.map((day, index) => (
-              <div key={day.label} className="flex flex-1 flex-col items-center">
+              <button type="button" key={day.label} onClick={() => setSelectedDay((current) => current === day.label ? null : day.label)} aria-pressed={selectedDay === day.label} aria-label={`${day.label}, ${money(day.amount)} revenue. Click to ${selectedDay === day.label ? 'clear selection' : 'select day'}`} className={`flex h-full min-w-0 flex-col items-center justify-end gap-1 overflow-hidden rounded-t-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose ${selectedDay === day.label ? 'bg-rose-soft/60' : ''}`}>
                 <div
-                  className="w-full rounded-t-lg transition-all duration-700"
-                  style={{ height: `${(day.amount / max) * 100}%`, minHeight: 6, background: index === days.length - 1 ? 'var(--color-rose)' : 'var(--color-pink)' }}
+                  className="w-full max-w-8 shrink-0 rounded-t-lg transition-all duration-700"
+                  style={{ height: `${Math.max(6, Math.round((day.amount / max) * 120))}px`, maxHeight: 120, background: selectedDay === day.label || (!selectedDay && index === days.length - 1) ? 'var(--color-rose)' : 'var(--color-pink)' }}
                   title={`${day.label}: ${money(day.amount)}`}
                 />
-                <div className="mt-1.5 text-[11px] text-ink-soft">{day.label}</div>
-              </div>
+                <div className="w-full shrink-0 truncate text-center text-[9px] text-ink-soft" title={day.label}>{day.label}</div>
+              </button>
             ))}
           </div>
         )}
+        <p className="mt-2 text-[11px] text-ink-soft">Revenue is paid, non-cancelled orders. Bars show the latest 14 dates with sales. {selectedDay ? `Selected ${selectedDay}: ${money(reportOrders.reduce((sum, order) => sum + order.total, 0))}.` : 'Select a bar to download that date only; select it again to clear.'}</p>
         <p className="mt-4 text-[12.5px] text-ink-soft">{delivered} of {orders.length} orders delivered.</p>
-        <button type="button" onClick={downloadReport} className={`${roseButton} mt-4`}>Download sales report (CSV)</button>
+        <button type="button" onClick={downloadReport} className={`${roseButton} mt-4`}>{selectedDay ? `Download ${selectedDay} sales (CSV)` : 'Download all paid sales (CSV)'}</button>
       </div>
 
       <div className={`${card} p-6`}>

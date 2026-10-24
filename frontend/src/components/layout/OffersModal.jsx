@@ -1,24 +1,10 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
-import { KEYS } from '../admin/adminHelpers.js'
-import { INITIAL_COUPONS } from '../../data/adminSeed.js'
+import { apiRequest } from '../../api.js'
 
 /* The store-wide offer. It is not a coupon, so it always shows first. */
-const DELIVERY_OFFER = { id: 'delivery', title: 'Free delivery', text: 'On orders over ৳2,000 · Nationwide', label: '✓ Free delivery', to: '/shop' }
-
-/* Reads the coupons saved by the admin "Coupons" tab and keeps only the active ones.
-   If nothing is saved yet, it falls back to the starting list. */
-function readActiveCoupons() {
-  let coupons = INITIAL_COUPONS
-  try {
-    const saved = localStorage.getItem(KEYS.coupons)
-    if (saved) coupons = JSON.parse(saved)
-  } catch {
-    // storage unavailable: use the starting list
-  }
-  return Array.isArray(coupons) ? coupons.filter((coupon) => coupon.active && coupon.code) : []
-}
+const DELIVERY_OFFER = { id: 'delivery', title: 'Free delivery', text: 'On orders over ৳3,000 · Nationwide', label: '✓ Free delivery', to: '/shop' }
 
 /* Turns one admin coupon into the text shown on its card. */
 function describe(coupon) {
@@ -28,8 +14,17 @@ function describe(coupon) {
 }
 
 export default function OffersModal({ onClose }) {
-  // Read once when the pop-up opens, so it always shows what the admin has right now.
-  const [coupons] = useState(readActiveCoupons)
+  const [coupons, setCoupons] = useState([])
+
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/coupons').then((data) => {
+      // The public endpoint returns only active, unexpired, usable coupons.
+      // It omits the `active` field, so do not filter on that field here.
+      if (!cancelled) setCoupons(Array.isArray(data) ? data.filter((coupon) => coupon.code) : [])
+    }).catch(() => { if (!cancelled) setCoupons([]) })
+    return () => { cancelled = true }
+  }, [])
 
   // Escape closes it, and the page behind stops scrolling while it is open.
   useEffect(() => {
