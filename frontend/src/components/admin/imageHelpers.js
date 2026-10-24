@@ -1,15 +1,13 @@
-/* Photo helpers for the admin.
-   There is no backend yet, so photos are shrunk in the browser and saved as text
-   (a "data URL") together with the rest of the data in localStorage.
-   Later, when the backend exists, only compressImage() needs to change:
-   upload the file to the server and return the URL it gives back. */
+import { assetUrl } from '../../api.js'
+
+/* Compress locally; ImageField uploads the resulting binary to the backend. */
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // refuse files over 10 MB before shrinking
 
-/* Shrinks a picked file so it fits in browser storage.
+/* Shrinks a picked file before upload.
    maxSide = longest side in pixels, quality = JPEG quality (0 to 1).
    format  = 'image/jpeg' (smaller, the default) or 'image/png' (keeps a see-through background, used for the logo).
-   Gives back a promise of the finished data URL. */
+   Gives back a promise of a compressed image Blob. */
 export function compressImage(file, { maxSide = 640, quality = 0.75, format = 'image/jpeg' } = {}) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) return reject(new Error('Please choose an image (JPG, PNG or WEBP).'))
@@ -31,8 +29,11 @@ export function compressImage(file, { maxSide = 640, quality = 0.75, format = 'i
       }
       context.drawImage(image, 0, 0, canvas.width, canvas.height)
 
-      URL.revokeObjectURL(url)
-      resolve(canvas.toDataURL(format, quality))
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url)
+        if (blob) resolve(blob)
+        else reject(new Error('Could not compress that image.'))
+      }, format, quality)
     }
     image.onerror = () => {
       URL.revokeObjectURL(url)
@@ -42,10 +43,10 @@ export function compressImage(file, { maxSide = 640, quality = 0.75, format = 'i
   })
 }
 
-/* Turns a saved picture into something an <img> can show.
-   Photos picked in the admin are data URLs, the starting blog posts use paths
-   like "images/blog/x.jpg" from the public folder. */
+/* Turns stored image paths into something an <img> can show. */
 export function imageSrc(image) {
   if (!image) return ''
-  return /^(data:|https?:|\/)/.test(image) ? image : `/${image}`
+  if (/^(data:|https?:|blob:)/.test(image)) return image
+  const path = `/${image.replace(/^\//, '')}`
+  return path.startsWith('/uploads/') ? assetUrl(path) : path
 }

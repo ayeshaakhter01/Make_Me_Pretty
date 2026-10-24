@@ -3,6 +3,7 @@ import AdminLogin from '../../components/admin/AdminLogin.jsx'
 import AdminDashboard from './AdminDashboard.jsx'
 import DeliveryDashboard from './DeliveryDashboard.jsx'
 import { KEYS } from '../../components/admin/adminHelpers.js'
+import { clearAuthSession } from '../../api.js'
 
 /* =============================================================================
    ADMIN AREA  ->  /admin
@@ -24,6 +25,7 @@ export default function AdminApp() {
 
   function signOut() {
     sessionStorage.removeItem(KEYS.session)
+    clearAuthSession()
     setSession(null)
   }
 

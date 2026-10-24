@@ -1,10 +1,10 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PageContainer from '../ui/PageContainer.jsx'
 import StaggerReveal from '../ui/StaggerReveal.jsx'
-import { KEYS } from '../admin/adminHelpers.js'
-import { useStoredState } from '../admin/useStoredState.js'
 import { SEED_FOOTER } from '../../data/siteContent.js'
 import { SOCIAL_ICONS } from './socialIcons.jsx'
+import { apiRequest } from '../../api.js'
 
 /* The footer content (links, social media, payment logos) is edited by the admin in the Footer tab. */
 const linkClass = 'link-underline text-[13.5px] text-ivory/90 hover:text-pink'
@@ -24,7 +24,14 @@ function LinkColumn({ title, links }) {
 }
 
 export default function SiteFooter() {
-  const [footer] = useStoredState(KEYS.footer, SEED_FOOTER)
+  const [footer, setFooter] = useState(SEED_FOOTER)
+  useEffect(() => {
+    let cancelled = false
+    const load = () => apiRequest('/site-settings').then((settings) => { if (!cancelled) setFooter(settings.footer || SEED_FOOTER) }).catch(() => undefined)
+    load()
+    window.addEventListener('mmp-site-settings-change', load)
+    return () => { cancelled = true; window.removeEventListener('mmp-site-settings-change', load) }
+  }, [])
   const usable = (links = []) => links.filter((link) => link.label?.trim() && link.href?.trim())
   const payments = (footer.payments ?? []).filter((payment) => payment.src)
   const socials = (footer.socials ?? []).filter((social) => social.active && social.href?.trim() && SOCIAL_ICONS[social.name])

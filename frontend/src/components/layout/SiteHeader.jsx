@@ -1,27 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { categories, products } from '../../data/products.js'
+import { useCatalog } from '../../context/useCatalog.js'
 import { useCart } from '../../context/useCart.js'
 import Icon from '../ui/Icon.jsx'
 import PageContainer from '../ui/PageContainer.jsx'
 import OffersModal from './OffersModal.jsx'
-import { KEYS } from '../admin/adminHelpers.js'
-import { useStoredState } from '../admin/useStoredState.js'
-
-const offerMessages = [
-  { message: 'Free delivery on orders over ৳3,000 · Nationwide', code: '' },
-  { message: '20% off your order with code GLOW20', code: 'GLOW20' },
-]
+import { apiRequest, assetUrl } from '../../api.js'
 
 function OffersBar() {
+  const [offerMessages, setOfferMessages] = useState([{ message: 'Free delivery on orders over ৳3,000 · Nationwide', code: '' }])
   const [index, setIndex] = useState(0)
   const [visible, setVisible] = useState(true)
   const [offersOpen, setOffersOpen] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    const load = () => apiRequest('/coupons').then((coupons) => {
+      if (cancelled) return
+      // The public API already filters out disabled and expired coupons.
+      const active = coupons.filter((coupon) => coupon.code).map((coupon) => ({ message: coupon.note || `${coupon.value}${coupon.type === 'percent' ? '% off' : coupon.type === 'shipping' ? 'Free delivery' : '৳ off'} your order`, code: coupon.code }))
+      setOfferMessages([{ message: 'Free delivery on orders over ৳3,000 · Nationwide', code: '' }, ...active])
+      setIndex(0)
+    }).catch(() => undefined)
+    load()
+    const refresh = window.setInterval(load, 30000)
+    window.addEventListener('focus', load)
+    window.addEventListener('mmp-coupons-change', load)
+    return () => { cancelled = true; window.clearInterval(refresh); window.removeEventListener('focus', load); window.removeEventListener('mmp-coupons-change', load) }
+  }, [])
+
+  useEffect(() => {
+    if (offerMessages.length < 2) { setIndex(0); return undefined }
     const timer = window.setInterval(() => setIndex((current) => (current + 1) % offerMessages.length), 4200)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [offerMessages.length])
 
   if (!visible) return null
   const offer = offerMessages[index]
@@ -34,6 +46,7 @@ function OffersBar() {
 }
 
 function SearchForm({ compact = false, onNavigate }) {
+  const { products } = useCatalog()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
@@ -55,8 +68,15 @@ function SearchForm({ compact = false, onNavigate }) {
 }
 
 function BrandLogo() {
-  const [customLogo] = useStoredState(KEYS.siteLogo, '') // set by the admin in the Banners tab
-  return <Link to="/" aria-label="Make Me Pretty home" className="flex shrink-0 items-center"><img src={customLogo || '/images/logo1.png'} alt="Make Me Pretty" className="h-10 w-auto max-w-[180px] object-contain sm:h-11" /></Link>
+  const [customLogo, setCustomLogo] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    const load = () => apiRequest('/site-settings').then((settings) => { if (!cancelled) setCustomLogo(settings.logo || '') }).catch(() => undefined)
+    load()
+    window.addEventListener('mmp-site-settings-change', load)
+    return () => { cancelled = true; window.removeEventListener('mmp-site-settings-change', load) }
+  }, [])
+  return <Link to="/" aria-label="Make Me Pretty home" className="flex shrink-0 items-center"><img src={customLogo ? assetUrl(customLogo) : '/images/logo1.png'} alt="Make Me Pretty" className="h-10 w-auto max-w-[180px] object-contain sm:h-11" /></Link>
 }
 
 function WishlistLink({ count }) {
@@ -83,7 +103,7 @@ function MegaMenu({ category, close }) {
   return <div className="absolute left-1/2 top-full z-[100] hidden w-[min(760px,92vw)] -translate-x-1/2 pt-4 md:block" onMouseEnter={close.clear} onMouseLeave={close.schedule}><div className="grid grid-cols-[1.6fr_1fr] overflow-hidden rounded-3xl border border-line bg-cream shadow-[0_24px_64px_rgba(59,48,44,.2)]"><div className="p-7"><p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose">{category.name}</p><div className="grid grid-cols-2 gap-x-5">{category.types.map((type) => <Link key={type} to={`/shop?category=${encodeURIComponent(category.name)}&type=${encodeURIComponent(type)}`} onClick={close.now} className="group flex items-center justify-between rounded-xl px-3 py-2.5 text-[14px] transition hover:bg-pink-soft">{type}<span className="translate-x-[-4px] text-rose opacity-0 transition group-hover:translate-x-0 group-hover:opacity-100">→</span></Link>)}</div><Link to={`/shop?category=${encodeURIComponent(category.name)}`} onClick={close.now} className="mt-4 inline-block border-b border-transparent pb-0.5 text-sm font-medium text-rose hover:border-rose">Shop all {category.name} →</Link></div><div className="flex flex-col justify-between bg-pink-soft p-7"><div><span className="mb-2 block text-2xl text-rose">✿</span><h3 className="font-serif text-xl">{category.featured?.title}</h3><p className="mt-2 text-sm leading-relaxed text-ink-soft">{category.featured?.copy}</p></div><p className="mt-4 text-[11px] uppercase tracking-[0.14em] text-ink-soft">{category.note}</p></div></div></div>
 }
 
-function MobileNavigation({ open, close }) {
+function MobileNavigation({ open, close, categories }) {
   const [expanded, setExpanded] = useState(null)
   return <><button type="button" aria-label="Close navigation" onClick={close} className={`fixed inset-0 z-[120] bg-ink/35 transition-opacity md:hidden ${open ? 'opacity-100' : 'pointer-events-none opacity-0'}`} /><aside inert={!open || undefined} className={`fixed inset-y-0 left-0 z-[130] flex w-[min(340px,88vw)] flex-col bg-ivory shadow-2xl transition-transform duration-300 md:hidden ${open ? 'translate-x-0' : '-translate-x-full'}`} aria-hidden={!open}><div className="flex items-center justify-between border-b border-line px-5 py-4"><BrandLogo/><button onClick={close} aria-label="Close menu" className="text-2xl text-ink-soft">×</button></div><nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Mobile navigation">{categories.map((category) => <div key={category.name} className="border-b border-line/70"><button onClick={() => setExpanded((current) => current === category.name ? null : category.name)} className="flex w-full items-center justify-between py-3.5 text-left font-serif text-lg">{category.name}<span className={`text-rose transition ${expanded === category.name ? 'rotate-45' : ''}`}>+</span></button>{expanded === category.name && <div className="grid grid-cols-2 gap-1 pb-3">{category.types.map((type) => <Link key={type} onClick={close} to={`/shop?category=${encodeURIComponent(category.name)}&type=${encodeURIComponent(type)}`} className="rounded-lg px-2 py-2 text-sm text-ink-soft hover:bg-pink-soft">{type}</Link>)}</div>}</div>)}{[['Combo','/combo'],['Offers','/offers'],['All brands','/brands'],['Wishlist','/wishlist'],['Track order','/track'],['About us','/p/about-us'],['Contact','/p/contact']].map(([label,to]) => <Link key={to} to={to} onClick={close} className="block border-b border-line py-3.5 font-serif text-lg last:border-0">{label}</Link>)}</nav><div className="border-t border-line px-5 py-4"><Link to="/account" onClick={close} className="block rounded-full bg-rose px-5 py-3 text-center text-sm font-medium text-white">Sign in / Create account</Link></div></aside></>
 }
@@ -93,6 +113,7 @@ export default function SiteHeader({ onOpenCart }) {
   const [activeCategory, setActiveCategory] = useState(null)
   const [scrolled, setScrolled] = useState(false)
   const { itemCount, wishlist } = useCart()
+  const { categories } = useCatalog()
   const closeTimer = useRef(null)
   const closeMenu = { clear: () => window.clearTimeout(closeTimer.current), schedule: () => { window.clearTimeout(closeTimer.current); closeTimer.current = window.setTimeout(() => setActiveCategory(null), 180) }, now: () => { window.clearTimeout(closeTimer.current); setActiveCategory(null) } }
 
@@ -118,5 +139,5 @@ export default function SiteHeader({ onOpenCart }) {
               {category.name}</Link>)}<Link to="/combo" onMouseEnter={() => setActiveCategory(null)} className="border-b 
               border-transparent py-1 text-[13px] hover:border-rose">Combo</Link>
               <Link to="/offers" onMouseEnter={() => setActiveCategory(null)} className="rounded-full bg-gold-soft px-3.5 py-1.5 text-[13px] font-semibold text-[#8a6a2f] hover:bg-gold hover:text-white">Offers ✦</Link>
-              </nav><div className="ml-auto flex flex-1 items-center justify-end gap-2 sm:gap-3 lg:gap-4"><div className="hidden min-w-0 flex-1 xl:block xl:max-w-none"><SearchForm compact/></div><WishlistLink count={wishlist.length}/><CartLink count={itemCount} onClick={onOpenCart}/><Link to="/account" aria-label="Sign in" title="Sign in" className="grid size-9 shrink-0 place-items-center rounded-full bg-pink-soft text-rose-deep ring-1 ring-inset ring-rose/25 hover:bg-pink"><svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M5 19.5c0-3.6 3.2-5.5 7-5.5s7 1.9 7 5.5" strokeLinecap="round"/></svg></Link></div><MegaMenu category={categories.find((item) => item.name === activeCategory)} close={closeMenu}/></div><div className="border-t border-line px-5 py-2.5 xl:hidden"><PageContainer className="px-0"><SearchForm compact onNavigate={() => setMobileOpen(false)}/></PageContainer></div></header><MobileNavigation open={mobileOpen} close={() => setMobileOpen(false)}/></>
+              </nav><div className="ml-auto flex flex-1 items-center justify-end gap-2 sm:gap-3 lg:gap-4"><div className="hidden min-w-0 flex-1 xl:block xl:max-w-none"><SearchForm compact/></div><WishlistLink count={wishlist.length}/><CartLink count={itemCount} onClick={onOpenCart}/><Link to="/account" aria-label="Sign in" title="Sign in" className="grid size-9 shrink-0 place-items-center rounded-full bg-pink-soft text-rose-deep ring-1 ring-inset ring-rose/25 hover:bg-pink"><svg viewBox="0 0 24 24" className="size-[18px]" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M5 19.5c0-3.6 3.2-5.5 7-5.5s7 1.9 7 5.5" strokeLinecap="round"/></svg></Link></div><MegaMenu category={categories.find((item) => item.name === activeCategory)} close={closeMenu}/></div><div className="border-t border-line px-5 py-2.5 xl:hidden"><PageContainer className="px-0"><SearchForm compact onNavigate={() => setMobileOpen(false)}/></PageContainer></div></header><MobileNavigation open={mobileOpen} close={() => setMobileOpen(false)} categories={categories}/></>
 }

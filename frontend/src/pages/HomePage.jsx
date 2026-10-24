@@ -1,4 +1,6 @@
-import { products } from '../data/products.js'
+import { useEffect, useState } from 'react'
+import { useCatalog } from '../context/useCatalog.js'
+import { apiRequest } from '../api.js'
 import ProductScroller from '../components/home/ProductScroller.jsx'
 import HeroCarousel from '../components/home/HeroCarousel.jsx'
 import TrustMarquee from '../components/home/TrustMarquee.jsx'
@@ -13,12 +15,22 @@ import HomeCategoriesSection from '../components/home/HomeCategoriesSection.jsx'
 import Reveal from '../components/ui/Reveal.jsx'
 
 export default function HomePage() {
-  const bestsellers = products.filter((product) => product.badge === 'Bestseller')
+  const { products } = useCatalog()
+  const [bestSellers, setBestSellers] = useState([])
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/products/best-sellers').then((data) => {
+      if (!cancelled) setBestSellers(data.map((product) => ({ ...product, id: String(product._id), old: product.compareAt ?? null, desc: product.description ?? '', ing: product.ingredients ?? [], badge: 'Bestseller' })))
+    }).catch(() => { if (!cancelled) setBestSellers([]) })
+    return () => { cancelled = true }
+  }, [])
+  const featured = products.filter((product) => product.badge === 'Featured')
   return <>
     <HeroCarousel />
     <TrustMarquee />
     <HomeCategoriesSection />
-    <PageContainer className="pb-16 pt-0"><Reveal><SectionHeading eyebrow="Customer favourites" title="The Bestsellers" linkTo="/shop" linkLabel="View all products"/></Reveal><Reveal><ProductScroller products={bestsellers}/></Reveal></PageContainer>
+    {featured.length > 0 && <PageContainer className="pb-16 pt-0"><Reveal><SectionHeading eyebrow="Selected for your routine" title="Featured products" linkTo="/shop" linkLabel="View all products"/></Reveal><Reveal><ProductScroller products={featured}/></Reveal></PageContainer>}
+    {bestSellers.length > 0 && <PageContainer className="pb-16 pt-0"><Reveal><SectionHeading eyebrow="Loved by our shoppers" title="Best sellers" linkTo="/shop" linkLabel="Shop all products"/></Reveal><Reveal><ProductScroller products={bestSellers}/></Reveal></PageContainer>}
     <BrandShowcase />
     <BlogSection />
     <BrandStory />

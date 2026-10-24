@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { compressImage } from './imageHelpers.js'
 import { cx } from './adminHelpers.js'
+import { assetUrl, uploadImage } from '../../api.js'
 
 /* PHOTO PICKER used by the product form and the blog form.
    images   = list of saved pictures (the first one is the main picture)
@@ -26,7 +27,7 @@ export default function ImageField({ images, onChange, max = 5, maxSide = 640, q
     try {
       const room = single ? 1 : max - images.length
       const added = []
-      for (const file of files.slice(0, room)) added.push(await compressImage(file, { maxSide, quality, format }))
+      for (const file of files.slice(0, room)) added.push(await uploadImage(await compressImage(file, { maxSide, quality, format })))
       onChange(single ? added : [...images, ...added])
       if (files.length > room) setError(`Only ${max} photos fit, so the extra ones were skipped.`)
     } catch (problem) {
@@ -44,7 +45,7 @@ export default function ImageField({ images, onChange, max = 5, maxSide = 640, q
       <div className="flex flex-wrap gap-2.5">
         {images.map((src, index) => (
           <div key={`${index}-${src.slice(-24)}`} className={`relative ${previewClass} overflow-hidden rounded-xl border border-line bg-ivory`}>
-            <img src={src} alt={`Photo ${index + 1}`} className={`size-full ${fit === 'contain' ? 'object-contain p-1' : 'object-cover'}`} />
+            <img src={assetUrl(src)} alt={`Photo ${index + 1}`} className={`size-full ${fit === 'contain' ? 'object-contain p-1' : 'object-cover'}`} />
             {!single && index === 0 && images.length > 1 && (
               <span className="absolute bottom-1 left-1 rounded-full bg-ink/75 px-1.5 py-0.5 text-[9px] font-medium text-ivory">Main</span>
             )}

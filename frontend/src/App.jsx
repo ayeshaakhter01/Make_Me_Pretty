@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Component, lazy, Suspense } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import SiteLayout from './components/layout/SiteLayout.jsx'
 
@@ -23,9 +23,24 @@ function RouteLoading() {
   return <div className="mx-auto max-w-7xl px-5 py-24 text-center text-muted">Loading your beauty essentials…</div>
 }
 
+class RouteErrorBoundary extends Component {
+  state = { error: null }
+
+  static getDerivedStateFromError(error) { return { error } }
+
+  componentDidCatch(error, info) {
+    console.error('Page render failed:', error, info.componentStack)
+  }
+
+  render() {
+    if (this.state.error) return <main role="alert" className="mx-auto max-w-3xl px-5 py-24 text-center"><h1 className="font-serif text-3xl">This page could not load</h1><p className="mt-4 text-rose-deep">{this.state.error.message}</p></main>
+    return this.props.children
+  }
+}
+
 export default function App() {
   return (
-    <Suspense fallback={<RouteLoading />}>
+    <RouteErrorBoundary><Suspense fallback={<RouteLoading />}>
       <Routes>
         <Route path="admin" element={<AdminApp />} />
         <Route element={<SiteLayout />}>
@@ -52,6 +67,6 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
-    </Suspense>
+    </Suspense></RouteErrorBoundary>
   )
 }

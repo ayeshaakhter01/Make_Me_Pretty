@@ -12,46 +12,82 @@ import UsersPanel from '../../components/admin/UsersPanel.jsx'
 import DeliveryPanel from '../../components/admin/DeliveryPanel.jsx'
 import BehaviourPanel from '../../components/admin/BehaviourPanel.jsx'
 import BlogManager from '../../components/admin/BlogManager.jsx'
-import { STORAGE_FULL_EVENT, useStoredState } from '../../components/admin/useStoredState.js'
-import { CANCELLED, KEYS, money } from '../../components/admin/adminHelpers.js'
-import {
-  INITIAL_COUPONS, INITIAL_ORDERS, INITIAL_PRODUCTS,
-  SEED_ADMIN_REVIEWS, SEED_BLOGS, SEED_CARTS, SEED_PARTNERS, SEED_USERS, SEED_WISHLISTS,
-} from '../../data/adminSeed.js'
-import { SEED_FOOTER, SEED_HERO_SLIDES } from '../../data/siteContent.js'
+import StaffAccountPanel from '../../components/admin/StaffAccountPanel.jsx'
+import { CANCELLED, money } from '../../components/admin/adminHelpers.js'
+import { SEED_FOOTER } from '../../data/siteContent.js'
+import { apiRequest } from '../../api.js'
 
-/* =============================================================================
-   ADMIN DASHBOARD
-   This page owns the "memory" of the admin: every list (orders, products,
-   coupons...) lives here in useStoredState, so it survives a refresh.
-   It hands each list to the tab that needs it. `tab` decides which tab shows.
-============================================================================= */
+/* The dashboard loads persistent store records from the API and gives each
+   manager the current data needed for its tab. */
 export default function AdminDashboard({ session, onSignOut }) {
   const [tab, setTab] = useState('Orders')
-  const [orders, setOrders] = useStoredState(KEYS.orders, INITIAL_ORDERS)
-  const [products, setProducts] = useStoredState(KEYS.products, INITIAL_PRODUCTS)
-  const [coupons, setCoupons] = useStoredState(KEYS.coupons, INITIAL_COUPONS)
-  const [users, setUsers] = useStoredState(KEYS.users, SEED_USERS)
-  const [heroSlides, setHeroSlides] = useStoredState(KEYS.heroSlides, SEED_HERO_SLIDES) // the home page carousel
-  const [footer, setFooter] = useStoredState(KEYS.footer, SEED_FOOTER) // footer links, social media, payment logos
-  const [logo, setLogo] = useStoredState(KEYS.siteLogo, '') // the shop's menu logo
-  const [headerImage, setHeaderImage] = useStoredState(KEYS.pageHeader, '') // banner picture on every shop page
-  const [reviews, setReviews] = useStoredState(KEYS.reviews, SEED_ADMIN_REVIEWS)
-  const [partners, setPartners] = useStoredState(KEYS.partners, SEED_PARTNERS)
-  const [messages, setMessages] = useStoredState(KEYS.messages, [])
+  const [orders, setOrders] = useState([])
+  const [products, setProducts] = useState([])
+  const [coupons, setCoupons] = useState([])
+  const [heroSlides, setHeroSlides] = useState([])
+  const [footer, setFooter] = useState(SEED_FOOTER)
+  const [logo, setLogo] = useState('')
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
+  const [settingsError, setSettingsError] = useState('')
+  const [partners, setPartners] = useState([])
   const [blogs, setBlogs] = useState([])
   const [blogsLoading, setBlogsLoading] = useState(true)
   const [blogsError, setBlogsError] = useState('')
-  const [carts] = useStoredState(KEYS.carts, SEED_CARTS) // only read here: the shop will fill these once there is a backend
-  const [wishlists] = useStoredState(KEYS.wishlists, SEED_WISHLISTS)
-  const [storageFull, setStorageFull] = useState(false)
+  const [ordersError, setOrdersError] = useState('')
+  const [accountOpen, setAccountOpen] = useState(false)
 
-  /* the browser says "no more space" when there are too many photos */
   useEffect(() => {
-    const onFull = () => setStorageFull(true)
-    window.addEventListener(STORAGE_FULL_EVENT, onFull)
-    return () => window.removeEventListener(STORAGE_FULL_EVENT, onFull)
+    let cancelled = false
+    apiRequest('/site-settings').then((settings) => {
+      if (cancelled) return
+      setFooter(settings.footer || SEED_FOOTER)
+      setLogo(settings.logo || '')
+      setSettingsLoaded(true)
+      setSettingsError('')
+      window.dispatchEvent(new Event('mmp-site-settings-change'))
+    }).catch((problem) => { if (!cancelled) setSettingsError(problem.message) })
+    return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    if (!settingsLoaded) return undefined
+    const timer = window.setTimeout(() => {
+      apiRequest('/site-settings', { method: 'PATCH', body: JSON.stringify({ footer, logo }) })
+        .then(() => { setSettingsError(''); window.dispatchEvent(new Event('mmp-site-settings-change')) })
+        .catch((problem) => setSettingsError(`Could not save store settings: ${problem.message}`))
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [footer, logo, settingsLoaded])
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([apiRequest('/orders/admin/all'), apiRequest('/admin/users')])
+      .then(([savedOrders, userResult]) => {
+        if (cancelled) return
+        setOrders(savedOrders.map((order) => ({
+          ...order,
+          id: order._id,
+          date: new Date(order.createdAt).toLocaleDateString(),
+          name: order.customer?.name || order.address?.recipientName || 'Customer',
+          accountEmail: order.customer?.email || '',
+          phone: order.address?.phone || order.customer?.phone || '',
+          address: [order.address?.addressLine, order.address?.area, order.address?.city].filter(Boolean).join(', '),
+          items: order.items.map((item) => `${item.name} × ${item.quantity}`).join(', '),
+          lines: order.items.map((item) => ({ name: item.name, qty: item.quantity, price: item.price })),
+          pay: order.paymentStatus === 'paid' ? 'Paid' : 'Unpaid',
+          method: order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod,
+          status: ['pending', 'confirmed', 'shipped', 'outForDelivery', 'delivered', 'cancelled'].indexOf(order.status),
+          partner: order.deliveryPartner?._id || '',
+          partnerName: order.deliveryPartner?.name || '',
+          messageCount: order.messageCount || 0,
+          isDemo: Boolean(order.isDemo),
+        })))
+        setPartners((userResult.users || []).filter((user) => user.role === 'deliveryPartner').map((user) => ({ id: user.id, name: user.name, phone: user.phone || '' })))
+        setOrdersError('')
+      })
+      .catch((problem) => { if (!cancelled) setOrdersError(problem.message) })
+    return () => { cancelled = true }
+  }, [setOrders, setPartners])
 
   
   useEffect(() => {
@@ -59,23 +95,15 @@ export default function AdminDashboard({ session, onSignOut }) {
 
     async function loadBlogs() {
       try {
-        const response = await fetch(
-          'http://localhost:5000/api/blogs/admin/all'
-        )
+        const result = await apiRequest('/blogs/admin/all')
 
-        if (!response.ok) {
-          throw new Error('Could not load blog posts.')
-        }
-
-        const result = await response.json()
-
-        if (!Array.isArray(result.data)) {
+        if (!Array.isArray(result)) {
           throw new Error('Unexpected blog API response.')
         }
 
         if (!cancelled) {
           setBlogs(
-            result.data.map((post) => ({
+            result.map((post) => ({
               ...post,
               id: post._id,
               active: post.status === 'published',
@@ -124,14 +152,11 @@ export default function AdminDashboard({ session, onSignOut }) {
           <div className="mb-6">
             <h1 className="font-serif text-[30px] font-normal">Store Dashboard</h1>
             <p className="text-sm text-ink-soft">Welcome back, {session.name} — here’s how Make Me Pretty is doing today.</p>
+            <button type="button" onClick={() => setAccountOpen((open) => !open)} className="mt-2 text-sm text-rose underline">{accountOpen ? 'Close account settings' : 'My account and password'}</button>
           </div>
 
-          {storageFull && (
-            <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl bg-lowstock-bg px-5 py-3 text-sm text-lowstock-text">
-              <span>Browser storage is full, so your last change was not saved and will be gone after a refresh. Remove a few photos (or use smaller ones) and try again.</span>
-              <button type="button" onClick={() => setStorageFull(false)} className="underline">Dismiss</button>
-            </div>
-          )}
+          {accountOpen && <StaffAccountPanel />}
+
 
           {issues.length > 0 && (
             <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl bg-lowstock-bg px-5 py-3 text-sm text-lowstock-text">
@@ -139,6 +164,9 @@ export default function AdminDashboard({ session, onSignOut }) {
               <button type="button" onClick={() => setTab('Orders')} className="underline">Open orders</button>
             </div>
           )}
+
+          {ordersError && <p role="alert" className="mb-4 text-sm text-lowstock-text">Could not load live orders and delivery partners: {ordersError}</p>}
+          {orders.some((order) => order.isDemo) && <p className="mb-4 text-xs text-ink-soft">Reports include clearly marked sample coursework orders and customers.</p>}
 
           {(tab === 'Orders' || tab === 'Analytics') && (
             <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -149,14 +177,14 @@ export default function AdminDashboard({ session, onSignOut }) {
             </div>
           )}
 
-          {tab === 'Orders' && <OrdersTable orders={orders} setOrders={setOrders} partners={partners} messages={messages} setMessages={setMessages} />}
+          {tab === 'Orders' && <OrdersTable orders={orders} setOrders={setOrders} partners={partners} />}
           {tab === 'Inventory' && <InventoryManager products={products} setProducts={setProducts} />}
-          {tab === 'Behaviour' && <BehaviourPanel users={users} orders={orders} products={products} carts={carts} wishlists={wishlists} />}
+          {tab === 'Behaviour' && <BehaviourPanel />}
           {tab === 'Analytics' && <AnalyticsPanel orders={orders} />}
           {tab === 'Coupons' && <CouponManager coupons={coupons} setCoupons={setCoupons} />}
-          {tab === 'Banners' && <BannersManager slides={heroSlides} setSlides={setHeroSlides} logo={logo} setLogo={setLogo} headerImage={headerImage} setHeaderImage={setHeaderImage} />}
-          {tab === 'Footer' && <FooterManager footer={footer} setFooter={setFooter} />}
-          {tab === 'Reviews' && <ReviewsPanel reviews={reviews} setReviews={setReviews} />}
+          {tab === 'Banners' && <BannersManager slides={heroSlides} setSlides={setHeroSlides} logo={logo} setLogo={setLogo} />}
+          {tab === 'Footer' && <><p className="mb-3 text-sm text-ink-soft">{!settingsLoaded ? (settingsError || 'Loading settings from database…') : settingsError || 'Changes save to the database automatically.'}</p><FooterManager footer={footer} setFooter={setFooter} /></>}
+          {tab === 'Reviews' && <ReviewsPanel />}
           {tab === 'Blog' && (
             blogsLoading ? (
               <p className="text-sm text-ink-soft">Loading blog posts...</p>
@@ -166,7 +194,7 @@ export default function AdminDashboard({ session, onSignOut }) {
               <BlogManager posts={blogs} setPosts={setBlogs} />
             )
           )}
-          {tab === 'Users' && <UsersPanel users={users} setUsers={setUsers} />}
+          {tab === 'Users' && <UsersPanel />}
           {tab === 'Delivery' && <DeliveryPanel partners={partners} setPartners={setPartners} orders={orders} />}
         </main>
       </div>
