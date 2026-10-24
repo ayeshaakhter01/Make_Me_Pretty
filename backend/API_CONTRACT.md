@@ -1,6 +1,6 @@
 # API Contract: Coupons, Banners, Reviews, Reports
 
-Owner: Ayesha. Status: **DRAFT**. Please read and reply before building anything that depends on it.
+Status: **Implemented baseline**. This contract records current API decisions. Confirm business rules with the project team before production use.
 
 A contract is a short written agreement: "this endpoint takes this, returns that."
 It lets teammates build their parts at the same time without guessing each other's field names.
@@ -17,8 +17,7 @@ Failure: `{ "success": false, "message": "...", "errors"?: ["..."] }`
 | 404 | Not found |
 | 409 | Duplicate (for example a coupon code that already exists) |
 
-Admin routes are currently open in development only (`NODE_ENV !== "production"`), the same as the blog routes.
-They will get Akhi's auth + admin role middleware once it is ready.
+Admin routes require a valid JWT and the `admin` role in every environment.
 
 ## 2. Coupons (built)
 
@@ -53,7 +52,7 @@ Discount rules: percent is rounded to a whole taka; a discount is never more tha
 a `shipping` coupon removes the delivery charge only.
 
 ### For Fayeza (checkout / orders)
-1. Call `validateCouponForOrder({ code, subtotal, deliveryCharge })` from `services/couponService.js`
+1. Call `validateCouponForOrder({ code, subtotal, deliveryCharge })` from `modules/coupons/services/couponService.js`
    (or the endpoint above). Use the returned discount numbers. Do not trust totals from React.
 2. After the order is saved successfully, call `redeemCoupon(code)` once. It adds 1 to `usedCount`
    in one atomic step and returns `null` if the coupon can no longer be used.
@@ -72,13 +71,11 @@ a `shipping` coupon removes the delivery charge only.
 Banner fields: `title`, `subtitle`, `type` (`image` | `video`), `src` (**required**), `href` (default `/shop`),
 `active` (default true), `order` (default 0, smaller shows first).
 
-`src` is a URL or a path (`/media/hero/offers.png` or `https://...`). Base64 images are rejected.
-**Team decision needed:** the React admin currently turns uploaded pictures into base64 text.
-We need one image-storage approach (for example a hosted URL) before connecting that screen.
+`src` is an HTTPS URL or uploaded app path such as `/uploads/<generated-name>.jpg`. Base64 images are rejected. The admin uploads image files to the backend; page headers use `placement: "pageHeader"` and a `pagePath`.
 
-## 4. Reviews (model + validators built; routes come next)
+## 4. Reviews
 
-Proposed endpoints (not built yet):
+Implemented endpoints:
 
 | Method + path | Who | What |
 |---|---|---|
@@ -100,7 +97,7 @@ so it will map them when connected.
 - Fahmida: the `Product` model name, and a place to show `average` and `count` on product pages.
 - Fayeza: a way to check "this customer has a **delivered** order that contains this product" (purchase-eligible reviews).
 
-## 5. Reports (calculation logic built; endpoints come after Orders exist)
+## 5. Reports
 
 Proposed endpoints: `GET /api/admin/reports/sales` and `GET /api/admin/reports/products`.
 
@@ -117,7 +114,7 @@ Response shape (already produced by `buildSalesReport` in `utils/reportCalculato
 Sales rules (from the guide): cancelled orders are excluded; **unpaid COD is not received revenue**;
 days are counted in Bangladesh time (Asia/Dhaka).
 
-### Order fields the reports need (PLEASE CONFIRM with Fayeza)
+### Order fields used by reports
 ```
 status:        "pending" | "confirmed" | "shipped" | "outForDelivery" | "delivered" | "cancelled"
 paymentMethod: "cod" | "bkash" | ...
@@ -129,8 +126,7 @@ items:         [{ product, name, quantity, price }]   // name and price saved at
 If the Order model uses different names or values, only the constants and field reads at the top of
 `utils/reportCalculator.js` need to change.
 
-## 6. Questions to settle as a team
-1. Order status and payment status values (section 5).
-2. Image storage for banners and review photos (section 3).
-3. Does the free-delivery rule stay at "free at ৳3000, ৳60 inside Chattogram, ৳120 outside" (as in the React checkout now)?
-   Fayeza owns this calculation; coupons only receive the `deliveryCharge`.
+## 6. Baseline assumptions to confirm
+1. Order and payment status values are those in section 5; COD is the only enabled method.
+2. Image uploads use local `backend/uploads` storage in development. Production should use persistent or hosted storage.
+3. Delivery is free at ৳3000, ৳60 inside Chattogram, and ৳120 elsewhere. Confirm this business rule with the team.

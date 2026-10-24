@@ -5,7 +5,7 @@ const errorMiddleware = (err, req, res, next) => {
   if (err.code === 11000) {
     return res.status(409).json({
       success: false,
-      message: "A blog post with this slug already exists",
+      message: "A record with this value already exists",
     });
   }
 
