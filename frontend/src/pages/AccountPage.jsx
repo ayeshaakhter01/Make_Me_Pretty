@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PageContainer from '../components/ui/PageContainer.jsx'
-import { apiRequest, saveAuthSession } from '../api.js'
+import { apiRequest, clearAuthSession, loadAuthSession, saveAuthSession } from '../api.js'
 import { useNavigate } from 'react-router-dom'
 
 export default function AccountPage() {
@@ -8,10 +8,18 @@ export default function AccountPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [staffSession, setStaffSession] = useState(null)
 
   const [signIn, setSignIn] = useState({ email: '', password: '' })
   const [signUp, setSignUp] = useState({ name: '', email: '', password: '' })
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const session = loadAuthSession()
+    if (!session?.token) return
+    if (session.user?.role === 'customer') navigate('/account/profile', { replace: true })
+    else setStaffSession(session.user)
+  }, [navigate])
 
   function changeMode(nextMode) {
     setMode(nextMode)
@@ -55,6 +63,7 @@ export default function AccountPage() {
   return (
     <PageContainer className="animate-fadeup py-14">
       <div className="mx-auto max-w-md">
+        {staffSession && <div className="mb-5 rounded-2xl border border-line bg-cream p-4 text-sm"><p>You are currently signed in as staff ({staffSession.name}). To use a customer account, sign out of this staff session first.</p><button type="button" onClick={() => { clearAuthSession(); setStaffSession(null) }} className="mt-2 text-rose underline">Sign out of staff account</button></div>}
         <header className="mb-6 text-center">
           <h1 className="font-serif text-[34px] font-normal">
             {mode === 'signin' ? 'Welcome back' : 'Create your account'}
