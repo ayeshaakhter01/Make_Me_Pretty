@@ -74,7 +74,7 @@ export async function getMyOrder(customerId, id) {
 }
 export async function getAllOrders() {
   const orders = await Order.find().sort({ createdAt: -1 }).populate("customer", "name email phone").populate("deliveryPartner", "name").lean();
-  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
+  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order), unreadForAdmin: unreadCount(order, "admin"), unreadForPartner: unreadCount(order, "deliveryPartner") }));
 }
 export async function updateOrderStatus(id, status) {
     const allowed = ["confirmed", "cancelled"];
@@ -101,7 +101,7 @@ export async function assignDeliveryPartner(orderId, userId) {
 }
 export async function getAssignments(partnerId) {
   const orders = await Order.find({ deliveryPartner: partnerId, status: { $ne: "cancelled" } }).sort({ createdAt: 1 }).populate("customer", "name phone").lean();
-  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
+  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order), unreadForAdmin: unreadCount(order, "admin"), unreadForPartner: unreadCount(order, "deliveryPartner") }));
 }
 export async function getAssignment(partnerId, orderId) {
   const order = await Order.findOne({ _id: orderId, deliveryPartner: partnerId }).populate("customer", "name phone").lean();
@@ -114,6 +114,8 @@ function authorizedForOrder(order, user) {
 export async function listOrderMessages(user, orderId) {
   const order = await Order.findById(orderId).select("customer deliveryPartner messages").lean();
   if (!order || !authorizedForOrder(order, user)) throw new AppError("Order not found or unavailable to this account.", 404);
+  const seenField = user.role === "admin" ? "adminSeenAt" : user.role === "deliveryPartner" ? "partnerSeenAt" : null;
+  if (seenField) await Order.updateOne({ _id: orderId }, { $set: { [seenField]: new Date() } });
   return order.messages || [];
 }
 export async function createOrderMessage(user, orderId, input) {
@@ -152,4 +154,8 @@ export async function collectCodPayment(partnerId, orderId) {
   if (order.paymentMethod !== "cod" || order.paymentStatus !== "unpaid" || !["outForDelivery", "delivered"].includes(order.status)) throw new AppError("COD can be marked paid only after cash has been collected at delivery.", 409);
   order.paymentStatus = "paid";
   return order.save();
+}
+function unreadCount(order, viewerRole) {
+  const seen = viewerRole === "admin" ? order.adminSeenAt : order.partnerSeenAt;
+  return (order.messages || []).filter((message) => message.role !== viewerRole && (!seen || new Date(message.at) > new Date(seen))).length;
 }

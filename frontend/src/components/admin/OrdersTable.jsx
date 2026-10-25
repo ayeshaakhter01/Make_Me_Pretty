@@ -12,9 +12,13 @@ export default function OrdersTable({ orders, setOrders, partners, openChatId, o
   const [stage, setStage] = useState('all') // 'all' or a stage number
   const [invoice, setInvoice] = useState(null)
   const [chatId, setChatId] = useState(null)
+  const openChat = (id) => {
+    setChatId(id)
+    setOrders((current) => current.map((item) => item.id === id ? { ...item, unread: 0 } : item))
+  }
   useEffect(() => {
-    if (openChatId) { setChatId(openChatId); onChatOpened?.() }
-  }, [openChatId, onChatOpened])
+    if (openChatId) { openChat(openChatId); onChatOpened?.() }
+  }, [openChatId])
 
   const update = async (id, changes) => {
     const order = orders.find((item) => item.id === id)
@@ -111,8 +115,8 @@ export default function OrdersTable({ orders, setOrders, partners, openChatId, o
                     )}
                   </td>
                   <td className={td}>
-                    <button type="button" onClick={() => setChatId(order.id)} className="whitespace-nowrap text-xs text-ink-soft underline hover:text-rose">
-                      {chatCount ? `Chat (${chatCount})` : 'Chat'}
+                    <button type="button" onClick={() => openChat(order.id)} className="whitespace-nowrap text-xs text-ink-soft underline hover:text-rose">
+                      {chatCount ? `Chat (${chatCount})` : 'Chat'}{order.unread > 0 && <span className="ml-1 rounded-full bg-rose px-1.5 py-0.5 text-[10px] font-semibold text-white">{order.unread} new</span>}
                     </button>
                   </td>
                   <td className={td}><button type="button" onClick={() => setInvoice(order)} className="whitespace-nowrap text-xs text-ink-soft underline hover:text-rose">View ↗</button></td>

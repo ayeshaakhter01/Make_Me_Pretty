@@ -44,8 +44,8 @@ export default function DeliveryDashboard({ session, onSignOut }) {
 
   useEffect(() => {
     let current = true
-    apiRequest('/delivery/assignments')
-      .then((saved) => { if (current) setOrders(saved.map((order) => ({
+    const load = () => apiRequest('/delivery/assignments')
+      .then((saved) => { if (current) setOrders((previous) => saved.map((order) => ({
         ...order, id: order._id, date: new Date(order.createdAt).toLocaleDateString(),
         name: order.address?.recipientName || order.customer?.name || 'Customer', phone: order.address?.phone || order.customer?.phone || '',
         address: [order.address?.addressLine, order.address?.area, order.address?.city].filter(Boolean).join(', '),
@@ -55,9 +55,13 @@ export default function DeliveryDashboard({ session, onSignOut }) {
         status: ['pending', 'confirmed', 'shipped', 'outForDelivery', 'delivered', 'cancelled'].indexOf(order.status),
         messageCount: order.messages?.length || 0,
         issue: order.issue || '',
+        unread: order.unreadForPartner || 0,
+        history: previous.find((item) => item.id === order._id)?.history,
       }))) })
       .catch((problem) => { if (current) setNotice(problem.message) })
-    return () => { current = false }
+    load()
+    const timer = window.setInterval(load, 15000)
+    return () => { current = false; window.clearInterval(timer) }
   }, [])
 
   const mine = orders
@@ -155,7 +159,9 @@ export default function DeliveryDashboard({ session, onSignOut }) {
         </div>
 
         {notice && <p className="mb-4 rounded-2xl bg-pink-soft px-4 py-3 text-[13px] text-ink-soft">{notice}</p>}
-
+        {orders.filter((order) => order.unread > 0).map((order) => (
+          <button key={order.id} type="button" onClick={() => { setChatId(order.id); setOrders((current) => current.map((item) => item.id === order.id ? { ...item, unread: 0 } : item)) }} className="mb-3 mr-2 rounded-full bg-pink-soft px-4 py-2 text-[13px] text-rose-deep underline">New message from admin on {order.orderNumber || order.id} ({order.unread})</button>
+        ))}
         <div className="grid gap-4">
           {shown.length === 0 && <p className={`${card} p-6 text-sm text-ink-soft`}>No orders here.</p>}
           {shown.map((order) => {
@@ -224,7 +230,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
 
                 {/* talk to the admin */}
                 <div className="mt-4 flex flex-wrap gap-3 border-t border-line pt-4">
-                  <button type="button" onClick={() => setChatId(order.id)} className={ghostButton}>{chatCount ? `Message admin (${chatCount})` : 'Message admin'}</button>
+                  <button type="button" onClick={() => { setChatId(order.id); setOrders((current) => current.map((item) => item.id === order.id ? { ...item, unread: 0 } : item)) }} className={ghostButton}>{chatCount ? `Message admin (${chatCount})` : 'Message admin'}{order.unread > 0 ? ` · ${order.unread} new` : ''}</button>
                   {!finished && <button type="button" onClick={() => setProblemId(order.id)} className={ghostButton}>Report a problem</button>}
                   {!finished && <button type="button" onClick={() => shareLocation(order)} className={ghostButton}>Share my location</button>}
                 </div>
