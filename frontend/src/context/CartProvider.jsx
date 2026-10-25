@@ -14,12 +14,22 @@ const productId = (product) => String(product?._id || product?.id || '')
 const isDatabaseId = (id) => /^[\da-f]{24}$/i.test(id)
 const withUiFields = (product) => ({ ...product, id: String(product._id), old: product.compareAt, ingredients: product.ingredients || [] })
 const signedIn = () => Boolean(loadAuthSession()?.token)
+// Remembers which bag items the customer UNCHECKED (everything else counts as selected,
+// so a newly added item is selected automatically). Kept per browser tab.
+const unselectedKey = 'make-me-pretty-cart-unselected'
+const readUnselected = () => {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(unselectedKey) ?? '[]')
+    return Array.isArray(saved) ? saved : []
+  } catch { return [] }
+}
 
 export function CartProvider({ children }) {
   const [identity, setIdentity] = useState(() => loadAuthSession()?.user?.id || loadAuthSession()?.user?._id || null)
   const [items, setItems] = useState(() => readList(cartKey(null)))
   const [wishlist, setWishlist] = useState(() => readList(wishlistKey(null)))
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [unselected, setUnselected] = useState(readUnselected)
 
   const reloadFromServer = useCallback(async () => {
     const session = loadAuthSession()
@@ -67,10 +77,28 @@ export function CartProvider({ children }) {
   useEffect(() => { if (!identity) localStorage.setItem(cartKey(null), JSON.stringify(items)) }, [identity, items])
   useEffect(() => { if (!identity) localStorage.setItem(wishlistKey(null), JSON.stringify(wishlist)) }, [identity, wishlist])
 
-  const value = useMemo(() => ({
+  useEffect(() => {
+    try { sessionStorage.setItem(unselectedKey, JSON.stringify(unselected)) } catch { /* private mode: selection just will not survive a refresh */ }
+  }, [unselected])
+
+  const value = useMemo(() => {
+    const selectedItems = items.filter((item) => !unselected.includes(productId(item.product)))
+    return {
     items, wishlist, drawerOpen,
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
     subtotal: items.reduce((total, item) => total + item.product.price * item.quantity, 0),
+    // The items the customer ticked in the bag. Checkout orders only these.
+    selectedItems,
+    selectedCount: selectedItems.reduce((total, item) => total + item.quantity, 0),
+    selectedSubtotal: selectedItems.reduce((total, item) => total + item.product.price * item.quantity, 0),
+    isSelected(id) { return !unselected.includes(id) },
+    toggleSelected(id) { setUnselected((current) => current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]) },
+    setAllSelected(all) { setUnselected(all ? [] : items.map((item) => productId(item.product))) },
+    // Used after an order is placed: the server already removed these from the saved cart.
+    removeOrderedItems(ids) {
+      setItems((current) => current.filter((item) => !ids.includes(productId(item.product))))
+      setUnselected((current) => current.filter((entry) => !ids.includes(entry)))
+    },
     // For a signed-in customer the server answers FIRST. If it says no (for
     // example "not enough stock"), we show the message and leave the screen unchanged.
     async addItem(product, quantity = 1) {
@@ -87,6 +115,7 @@ export function CartProvider({ children }) {
         const existing = current.find((item) => productId(item.product) === id)
         return existing ? current.map((item) => productId(item.product) === id ? { ...item, quantity: item.quantity + quantity } : item) : [...current, { product, quantity }]
       })
+      setUnselected((current) => current.filter((entry) => entry !== id))
       setDrawerOpen(true)
     },
     openDrawer() { setDrawerOpen(true) },
@@ -103,6 +132,7 @@ export function CartProvider({ children }) {
         }
       }
       setItems((current) => quantity < 1 ? current.filter((item) => productId(item.product) !== id) : current.map((item) => productId(item.product) === id ? { ...item, quantity } : item))
+      if (quantity < 1) setUnselected((current) => current.filter((entry) => entry !== id))
     },
     async removeItem(id) {
       if (isDatabaseId(id) && signedIn()) {
@@ -114,6 +144,7 @@ export function CartProvider({ children }) {
         }
       }
       setItems((current) => current.filter((item) => productId(item.product) !== id))
+      setUnselected((current) => current.filter((entry) => entry !== id))
     },
     clearCart() {
       setItems([])
@@ -135,7 +166,8 @@ export function CartProvider({ children }) {
       setWishlist((current) => current.some((item) => productId(item) === id) ? current.filter((item) => productId(item) !== id) : [...current, product])
     },
     isWishlisted(id) { return wishlist.some((product) => productId(product) === id) },
-  }), [drawerOpen, identity, items, wishlist])
+    }
+  }, [drawerOpen, identity, items, unselected, wishlist])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

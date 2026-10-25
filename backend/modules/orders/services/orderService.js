@@ -55,8 +55,9 @@ export async function createOrder(customerId, input) {
     if (couponCode && !(await redeemCoupon(couponCode))) throw new AppError("The coupon has just reached its usage limit.", 409);
     const address = Object.fromEntries(["recipientName", "phone", "addressLine", "area", "city"].map((key) => [key, input.address[key]?.trim() || ""]));
     const order = await Order.create({ orderNumber: makeOrderNumber(), customer: customerId, items, address, subtotal, deliveryCharge, discount, couponCode, total: subtotal + deliveryCharge - discount, paymentMethod: "cod", paymentStatus: "unpaid" });
-    // The order is saved, so empty the saved cart. If this fails, the order must still stay.
-    await Cart.updateOne({ customer: customerId }, { $set: { items: [] } }).catch(() => undefined);
+    // The order is saved, so take ONLY the ordered products out of the saved cart (the rest stay).
+    // If this fails, the order must still stay.
+    await Cart.updateOne({ customer: customerId }, { $pull: { items: { product: { $in: products.map((product) => product._id) } } } }).catch(() => undefined);
     return order;
   } catch (error) {
     if (reserved.length) await Product.bulkWrite(reserved.map((item) => ({ updateOne: { filter: { _id: item.product }, update: { $inc: { stock: item.quantity } } } })));
