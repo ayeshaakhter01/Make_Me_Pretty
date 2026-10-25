@@ -35,6 +35,7 @@ export default function AdminDashboard({ session, onSignOut }) {
   const [blogsError, setBlogsError] = useState('')
   const [ordersError, setOrdersError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [chatOrderId, setChatOrderId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -160,8 +161,10 @@ export default function AdminDashboard({ session, onSignOut }) {
 
           {issues.length > 0 && (
             <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl bg-lowstock-bg px-5 py-3 text-sm text-lowstock-text">
-              <span>{issues.length} delivery {issues.length === 1 ? 'problem needs' : 'problems need'} your attention ({issues.map((order) => order.id).join(', ')}).</span>
-              <button type="button" onClick={() => setTab('Orders')} className="underline">Open orders</button>
+              <span>{issues.length} delivery {issues.length === 1 ? 'problem needs' : 'problems need'} your attention:</span>
+              {issues.map((order) => (
+                <button key={order.id} type="button" onClick={() => { setTab('Orders'); setChatOrderId(order.id) }} className="rounded-full bg-white/60 px-3 py-1 text-xs font-semibold underline">{order.orderNumber || order.id}</button>
+              ))}
             </div>
           )}
 
@@ -177,7 +180,7 @@ export default function AdminDashboard({ session, onSignOut }) {
             </div>
           )}
 
-          {tab === 'Orders' && <OrdersTable orders={orders} setOrders={setOrders} partners={partners} />}
+          {tab === 'Orders' && <OrdersTable orders={orders} setOrders={setOrders} partners={partners} openChatId={chatOrderId} onChatOpened={() => setChatOrderId(null)} />}
           {tab === 'Inventory' && <InventoryManager products={products} setProducts={setProducts} />}
           {tab === 'Behaviour' && <BehaviourPanel />}
           {tab === 'Analytics' && <AnalyticsPanel orders={orders} />}

@@ -4,7 +4,7 @@ import { ORDER_STATUSES, money, roseButton } from './adminHelpers.js'
 /* Pop-up invoice for one order. "Print" opens the browser's print / save-as-PDF window. */
 export default function OrderInvoice({ order, onClose }) {
   return (
-    <Modal title={`Invoice ${order.id}`} onClose={onClose}>
+    <Modal title={`Invoice ${order.orderNumber || order.id}`} onClose={onClose}>
       <div className="grid gap-1 text-sm text-ink-soft">
         <div><span className="text-ink">{order.name}</span> · {order.phone}</div>
         <div>{order.address}</div>
