@@ -2,7 +2,7 @@ import { useState } from 'react'
 import BlogForm from './BlogForm.jsx'
 import { imageSrc } from './imageHelpers.js'
 import { card, cx, roseButton } from './adminHelpers.js'
-import { apiFetch } from '../../api.js'
+import { apiFetch, apiRequest } from '../../api.js'
 
 /* BLOG: write, edit, reorder, hide and delete posts.
    The order of this list is the order on the shop's "Our Blog" section,
@@ -139,28 +139,16 @@ export default function BlogManager({ posts, setPosts }) {
     }))
 
     try {
-      const responses = await Promise.all(
-        reordered.map((post) =>
-          apiFetch(`/blogs/${post.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order: post.order }),
-          })
-        )
-      )
-
-      const failedResponse = responses.find((response) => !response.ok)
-
-      if (failedResponse) {
-        throw new Error('Could not save the new blog order.')
-      }
+      await apiRequest('/blogs/reorder', {
+        method: 'PATCH',
+        body: JSON.stringify({ ids: reordered.map((post) => post.id) }),
+      })
 
       setPosts(reordered)
     } catch (error) {
       window.alert(error.message || 'Could not reorder blog posts.')
     }
   }
-
 
   return (
     <div>

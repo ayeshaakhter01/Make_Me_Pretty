@@ -1,6 +1,7 @@
 import Review from "../../../models/Review.js";
 import Product from "../../../models/Product.js";
 import AppError from "../../../utils/AppError.js";
+import { hasDeliveredOrderWithProduct } from "../../orders/services/orderService.js";
 import { calculateRatingSummary } from "../../../utils/ratingCalculator.js";
 import { validateReviewModeration, validateReviewSubmission } from "../../../validators/reviewValidator.js";
 
@@ -13,6 +14,7 @@ export async function createReview(customer, customerName, data) {
   const validation = validateReviewSubmission(data);
   if (!validation.isValid) throw new AppError(validation.errors.join(". "), 400);
   if (!await Product.exists({ _id: data.product, active: true })) throw new AppError("Product not found.", 404);
+  if (!await hasDeliveredOrderWithProduct(customer, data.product)) throw new AppError("You can review a product after an order containing it has been delivered.", 403);
   return Review.create({ ...data, customer, customerName });
 }
 export async function listReviews(status) {

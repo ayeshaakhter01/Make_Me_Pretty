@@ -134,3 +134,11 @@ export const updateBlog = async (id, blogData) => {
 export const deleteBlog = async (id) => {
   return await BlogPost.findByIdAndDelete(id);
 };
+
+export const reorderBlogs = async (ids) => {
+  await BlogPost.bulkWrite(
+    ids.map((id, position) => ({
+      updateOne: { filter: { _id: id }, update: { $set: { order: position } } },
+    }))
+  );
+};

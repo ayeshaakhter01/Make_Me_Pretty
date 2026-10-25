@@ -13,6 +13,7 @@ const readList = (key) => {
 const productId = (product) => String(product?._id || product?.id || '')
 const isDatabaseId = (id) => /^[\da-f]{24}$/i.test(id)
 const withUiFields = (product) => ({ ...product, id: String(product._id), old: product.compareAt, ingredients: product.ingredients || [] })
+const signedIn = () => Boolean(loadAuthSession()?.token)
 
 export function CartProvider({ children }) {
   const [identity, setIdentity] = useState(() => loadAuthSession()?.user?.id || loadAuthSession()?.user?._id || null)
@@ -32,8 +33,6 @@ export function CartProvider({ children }) {
 
     const guestCart = readList(cartKey(null))
     const guestWishlist = readList(wishlistKey(null))
-    setItems([])
-    setWishlist([])
     try {
       const [savedCart, savedWishlist] = await Promise.all([apiRequest('/cart'), apiRequest('/wishlist')])
       const serverCartIds = new Set((savedCart.items || []).map((row) => String(row.product?._id || '')))
@@ -52,8 +51,7 @@ export function CartProvider({ children }) {
       setItems((mergedCart.items || []).filter((row) => row.product).map((row) => ({ product: withUiFields(row.product), quantity: row.quantity })))
       setWishlist((mergedWishlist.products || []).map(withUiFields))
     } catch {
-      setItems([])
-      setWishlist([])
+      // The server could not be reached. Keep what is on screen instead of emptying the cart.
     }
   }, [])
 
@@ -73,41 +71,68 @@ export function CartProvider({ children }) {
     items, wishlist, drawerOpen,
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
     subtotal: items.reduce((total, item) => total + item.product.price * item.quantity, 0),
-    addItem(product, quantity = 1) {
+    // For a signed-in customer the server answers FIRST. If it says no (for
+    // example "not enough stock"), we show the message and leave the screen unchanged.
+    async addItem(product, quantity = 1) {
+      const id = productId(product)
+      if (isDatabaseId(id) && signedIn()) {
+        try {
+          await apiRequest('/cart/items', { method: 'POST', body: JSON.stringify({ productId: id, quantity }) })
+        } catch (error) {
+          window.alert(error.message || 'Could not add this item to your cart.')
+          return
+        }
+      }
       setItems((current) => {
-        const id = productId(product)
         const existing = current.find((item) => productId(item.product) === id)
         return existing ? current.map((item) => productId(item.product) === id ? { ...item, quantity: item.quantity + quantity } : item) : [...current, { product, quantity }]
       })
-      const id = productId(product)
-      if (isDatabaseId(id) && loadAuthSession()?.token) apiRequest('/cart/items', { method: 'POST', body: JSON.stringify({ productId: id, quantity }) }).catch(() => undefined)
       setDrawerOpen(true)
     },
     openDrawer() { setDrawerOpen(true) },
     closeDrawer() { setDrawerOpen(false) },
-    setQuantity(id, quantity) {
-      setItems((current) => quantity < 1 ? current.filter((item) => productId(item.product) !== id) : current.map((item) => productId(item.product) === id ? { ...item, quantity } : item))
-      if (isDatabaseId(id) && loadAuthSession()?.token) {
-        const request = quantity < 1 ? apiRequest(`/cart/items/${id}`, { method: 'DELETE' }) : apiRequest(`/cart/items/${id}`, { method: 'PATCH', body: JSON.stringify({ quantity }) })
-        request.catch(() => undefined)
+    async setQuantity(id, quantity) {
+      if (isDatabaseId(id) && signedIn()) {
+        try {
+          await (quantity < 1
+            ? apiRequest(`/cart/items/${id}`, { method: 'DELETE' })
+            : apiRequest(`/cart/items/${id}`, { method: 'PATCH', body: JSON.stringify({ quantity }) }))
+        } catch (error) {
+          window.alert(error.message || 'Could not update your cart.')
+          return
+        }
       }
+      setItems((current) => quantity < 1 ? current.filter((item) => productId(item.product) !== id) : current.map((item) => productId(item.product) === id ? { ...item, quantity } : item))
     },
-    removeItem(id) {
+    async removeItem(id) {
+      if (isDatabaseId(id) && signedIn()) {
+        try {
+          await apiRequest(`/cart/items/${id}`, { method: 'DELETE' })
+        } catch (error) {
+          window.alert(error.message || 'Could not remove this item.')
+          return
+        }
+      }
       setItems((current) => current.filter((item) => productId(item.product) !== id))
-      if (isDatabaseId(id) && loadAuthSession()?.token) apiRequest(`/cart/items/${id}`, { method: 'DELETE' }).catch(() => undefined)
     },
     clearCart() {
       setItems([])
-      if (loadAuthSession()?.token) apiRequest('/cart', { method: 'DELETE' }).catch(() => undefined)
+      if (signedIn()) apiRequest('/cart', { method: 'DELETE' }).catch(() => undefined)
     },
-    toggleWishlist(product) {
+    async toggleWishlist(product) {
       const id = productId(product)
       const exists = wishlist.some((item) => productId(item) === id)
-      setWishlist((current) => current.some((item) => productId(item) === id) ? current.filter((item) => productId(item) !== id) : [...current, product])
-      if (isDatabaseId(id) && loadAuthSession()?.token) {
-        const request = exists ? apiRequest(`/wishlist/items/${id}`, { method: 'DELETE' }) : apiRequest('/wishlist/items', { method: 'POST', body: JSON.stringify({ productId: id }) })
-        request.catch(() => undefined)
+      if (isDatabaseId(id) && signedIn()) {
+        try {
+          await (exists
+            ? apiRequest(`/wishlist/items/${id}`, { method: 'DELETE' })
+            : apiRequest('/wishlist/items', { method: 'POST', body: JSON.stringify({ productId: id }) }))
+        } catch (error) {
+          window.alert(error.message || 'Could not update your wishlist.')
+          return
+        }
       }
+      setWishlist((current) => current.some((item) => productId(item) === id) ? current.filter((item) => productId(item) !== id) : [...current, product])
     },
     isWishlisted(id) { return wishlist.some((product) => productId(product) === id) },
   }), [drawerOpen, identity, items, wishlist])

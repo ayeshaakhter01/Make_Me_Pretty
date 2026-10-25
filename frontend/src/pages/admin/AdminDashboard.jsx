@@ -185,7 +185,6 @@ export default function AdminDashboard({ session, onSignOut }) {
           )}
 
           {ordersError && <p role="alert" className="mb-4 text-sm text-lowstock-text">Could not load live orders and delivery partners: {ordersError}</p>}
-          {orders.some((order) => order.isDemo) && <p className="mb-4 text-xs text-ink-soft">Reports include clearly marked sample coursework orders and customers.</p>}
 
           {(tab === 'Orders' || tab === 'Analytics') && (
             <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
