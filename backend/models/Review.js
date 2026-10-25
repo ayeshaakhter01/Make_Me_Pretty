@@ -51,6 +51,15 @@ const reviewSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    // Up to 3 optional photos (paths like /uploads/abc.jpg). `image` above keeps the first one.
+    images: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (list) => list.length <= 3,
+        message: "A review can have at most 3 photos",
+      },
+    },
     // New reviews wait for admin approval.
     status: {
       type: String,

@@ -21,6 +21,9 @@ function publicUser(user) {
 }
 
 async function findUser(userId) {
+  if (!/^[a-f\d]{24}$/i.test(String(userId))) {
+    throw createError("That user id is not valid.", 400);
+  }
   const user = await User.findById(userId);
 
   if (!user) {
@@ -69,15 +72,29 @@ export async function updateMyProfile(userId, changes = {}) {
 }
 
 export async function changeMyPassword(userId, { currentPassword, newPassword } = {}) {
-  if (typeof currentPassword !== "string" || !currentPassword || typeof newPassword !== "string") {
-    throw createError("Current and new passwords are required.", 400);
+  if (typeof currentPassword !== "string" || !currentPassword || typeof newPassword !== "string" || !newPassword) {
+       throw createError("Current and new passwords are required.", 400);
   }
   if (newPassword.length < 8) throw createError("New password must be at least 8 characters.", 400);
+  if (newPassword.length > 72) throw createError("New password must be 72 characters or fewer.", 400);
+
   const user = await User.findById(userId).select("+password");
   if (!user) throw createError("User account was not found.", 404);
-  if (!(await user.comparePassword(currentPassword))) throw createError("Current password is incorrect.", 401);
+
+  if (!(await user.comparePassword(currentPassword))) {
+       throw createError("Current password is incorrect.", 400);
+  }
+  if (await user.comparePassword(newPassword)) {
+       throw createError("New password must be different from the current password.", 400);
+  }
+
   user.password = newPassword;
   await user.save();
+
+  const saved = await User.findById(userId).select("+password");
+  if (!saved || !(await saved.comparePassword(newPassword))) {
+       throw createError("Your password could not be saved. Please try again.", 500);
+  }
 }
 const USER_ROLES = ["customer", "admin", "deliveryPartner"];
 

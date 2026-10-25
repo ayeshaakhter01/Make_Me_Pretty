@@ -3,6 +3,8 @@ import { Autoplay, EffectCoverflow, Pagination } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import Reveal from '../ui/Reveal.jsx'
 import { apiRequest } from '../../api.js'
+import { ReviewPhotos } from '../products/ReviewPhoto.jsx'
+import { getReviewPhotos } from '../products/reviewPhotos.js'
 
 function Stars({ rating }) {
   return <span className="text-[15px] tracking-[0.12em] text-gold" aria-label={`${rating} out of 5 stars`}>{'★'.repeat(rating)}<span className="text-line">{'★'.repeat(5 - rating)}</span></span>
@@ -63,7 +65,7 @@ export default function ReviewsSection() {
             <Stars rating={review.rating}/>
             <blockquote className="my-3.5 line-clamp-4 flex-1 text-[14.5px] leading-relaxed">“{review.text}”</blockquote>
             <figcaption className="text-[13px] text-ink-soft"><span className="font-medium text-ink">{review.name}</span><span className="mt-1 block text-gold">{review.product}</span></figcaption>
-            <span className="mt-3 text-[12px] font-medium text-rose">Read full review →</span>
+            <span className="mt-3 text-[12px] font-medium text-rose">Read full review →{getReviewPhotos(review).length > 0 && <span className="ml-1.5 text-ink-soft">· {getReviewPhotos(review).length > 1 ? `${getReviewPhotos(review).length} photos` : 'includes a photo'}</span>}</span>
           </div>
         </figure>
       </SwiperSlide>)}
@@ -72,6 +74,7 @@ export default function ReviewsSection() {
       <article role="dialog" aria-modal="true" aria-label={`Review by ${selectedReview.name}`} className="relative w-full max-w-[560px] rounded-3xl border border-line bg-cream p-7 shadow-2xl sm:p-9" onClick={(event) => event.stopPropagation()}>
         <button type="button" onClick={() => setSelectedReview(null)} aria-label="Close review" className="absolute right-4 top-3 text-2xl text-ink-soft hover:text-ink">×</button>
         <Stars rating={selectedReview.rating}/><blockquote className="my-5 text-[16px] leading-[1.8]">“{selectedReview.text}”</blockquote>
+        <ReviewPhotos review={selectedReview} name={selectedReview.name} size="size-28 sm:size-36" className="mb-5" />
         <p className="text-sm text-ink-soft"><span className="font-medium text-ink">{selectedReview.name}</span><span className="mt-1 block text-gold">{selectedReview.product}</span></p>
       </article>
     </div>}

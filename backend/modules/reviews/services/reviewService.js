@@ -15,14 +15,16 @@ export async function createReview(customer, customerName, data) {
   if (!validation.isValid) throw new AppError(validation.errors.join(". "), 400);
   if (!await Product.exists({ _id: data.product, active: true })) throw new AppError("Product not found.", 404);
   if (!await hasDeliveredOrderWithProduct(customer, data.product)) throw new AppError("You can review a product after an order containing it has been delivered.", 403);
-  return Review.create({ ...data, customer, customerName });
+  // Keep `images` (up to 3) and `image` (the first one) in step, so older screens still work.
+  const images = (Array.isArray(data.images) ? data.images : data.image ? [data.image] : []).map((path) => path.trim());
+  return Review.create({ ...data, images, image: images[0] || "", customer, customerName });
 }
 export async function listReviews(status) {
   const filter = status ? { status } : {};
   return Review.find(filter).sort({ createdAt: -1 }).populate("product", "name slug").populate("customer", "name email").select("-__v").lean();
 }
 export async function listHomepageReviews() {
-  return Review.find({ status: "approved" }).sort({ createdAt: -1 }).limit(18).populate("product", "name slug").select("customerName product rating title text image isDemo createdAt").lean();
+  return Review.find({ status: "approved" }).sort({ createdAt: -1 }).limit(18).populate("product", "name slug").select("customerName product rating title text image images isDemo createdAt").lean();
 }
 export async function moderateReview(id, data) {
   const validation = validateReviewModeration(data);

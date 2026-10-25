@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import PageContainer from '../components/ui/PageContainer.jsx'
+import ChangePasswordForm from '../components/account/ChangePasswordForm.jsx'
+
 import {
   apiRequest,
   clearAuthSession,
@@ -29,7 +31,6 @@ export default function CustomerAccountPage() {
 
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileForm, setProfileForm] = useState({ name: '', phone: '', email: '' })
-  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '' })
 
   const [addressFormOpen, setAddressFormOpen] = useState(false)
   const [editingAddressId, setEditingAddressId] = useState(null)
@@ -121,19 +122,6 @@ export default function CustomerAccountPage() {
       setProfileForm({ name: result.user.name || '', phone: result.user.phone || '', email: result.user.email || '' })
       setEditingProfile(false)
       setMessage('Profile updated.')
-    } catch (error) {
-      setPageError(error.message)
-    }
-  }
-
-  async function changePassword(event) {
-    event.preventDefault()
-    setMessage('')
-    setPageError('')
-    try {
-      await apiRequest('/users/me/password', { method: 'PATCH', body: JSON.stringify(passwordForm) })
-      setPasswordForm({ currentPassword: '', newPassword: '' })
-      setMessage('Password changed successfully.')
     } catch (error) {
       setPageError(error.message)
     }
@@ -347,12 +335,7 @@ export default function CustomerAccountPage() {
                     </div>
                   )}
                 </div>
-                <form onSubmit={changePassword} className="mt-5 grid gap-4 rounded-3xl border border-line bg-cream p-6">
-                  <div><h3 className="font-serif text-xl">Change password</h3><p className="text-sm text-ink-soft">Enter your current password and choose a new one.</p></div>
-                  <label><span className="field-label">Current password</span><input type="password" autoComplete="current-password" required value={passwordForm.currentPassword} onChange={(event) => setPasswordForm({ ...passwordForm, currentPassword: event.target.value })} /></label>
-                  <label><span className="field-label">New password</span><input type="password" autoComplete="new-password" minLength={8} required value={passwordForm.newPassword} onChange={(event) => setPasswordForm({ ...passwordForm, newPassword: event.target.value })} /></label>
-                  <button className="w-fit rounded-full bg-rose px-5 py-2 text-sm text-white">Change Password</button>
-                </form>
+                   <ChangePasswordForm className="mt-5 rounded-3xl border border-line bg-cream p-6" />
               </section>
             )}
 
@@ -559,8 +542,8 @@ export default function CustomerAccountPage() {
                   </Link>
                 </div> : <div className="mt-6 grid gap-4">{orders.map((order) => <article key={order._id} className="rounded-3xl border border-line bg-cream p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs text-ink-soft">Order number</p><h3 className="font-serif text-xl">{order.orderNumber || order._id}</h3><p className="mt-1 text-xs text-ink-soft">{new Date(order.createdAt).toLocaleString()}</p></div><span className="rounded-full bg-rose/10 px-3 py-1 text-xs font-medium capitalize text-rose-deep">{order.status}</span></div>
-                  <p className="mt-4 text-sm">{(order.items || []).map((item) => `${item.name} × ${item.quantity}`).join(', ')}</p>
-                  <div className="flex flex-wrap gap-2"><button type="button" hidden={order.status !== 'pending'} onClick={() => cancelOrder(order)} className="rounded-full border border-line px-4 py-2 text-xs hover:border-rose">Cancel order</button><Link to={`/track?id=${encodeURIComponent(order.orderNumber || '')}`} className="rounded-full bg-rose px-4 py-2 text-xs font-medium text-white">Track order</Link></div>
+                  <ul className="mt-4 grid gap-2 text-sm">{(order.items || []).map((item, index) => <li key={`${item.product?._id || item.product}-${index}`} className="flex flex-wrap items-center justify-between gap-2"><span>{item.name} × {item.quantity}</span>{order.status === 'delivered' && item.product && <Link to={`/product/${item.product._id || item.product}?review=1`} className="rounded-full border border-rose px-3 py-1 text-xs font-medium text-rose-deep transition hover:bg-rose hover:text-white">Write a review →</Link>}</li>)}</ul>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4"><p className="text-sm">Total <strong>৳{Number(order.total || 0).toLocaleString('en-BD')}</strong> · {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}</p><div className="flex flex-wrap gap-2"><button type="button" hidden={order.status !== 'pending'} onClick={() => cancelOrder(order)} className="rounded-full border border-line px-4 py-2 text-xs hover:border-rose">Cancel order</button><Link to={`/track?id=${encodeURIComponent(order.orderNumber || '')}`} className="rounded-full bg-rose px-4 py-2 text-xs font-medium text-white">Track order</Link></div></div>
                 </article>)}</div>}
               </section>
             )}
