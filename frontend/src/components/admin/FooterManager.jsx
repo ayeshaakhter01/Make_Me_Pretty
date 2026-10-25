@@ -2,52 +2,7 @@ import { useState } from 'react'
 import ImageField from './ImageField.jsx'
 import { SEED_FOOTER } from '../../data/siteContent.js'
 import { SOCIAL_ICONS } from '../layout/socialIcons.jsx'
-import { card, cx, ghostButton, roseButton } from './adminHelpers.js'
-
-/* FOOTER TAB
-   Edits the shop's footer: Help links, Customer Policy links, social media and payment logos.
-   `footer` is one object { helpLinks, policyLinks, socials, payments } kept by AdminDashboard. */
-const KNOWN_PAGES = ['/p/contact', '/p/about-us', '/p/refund-return', '/p/privacy', '/p/delivery', '/p/terms']
-
-/* a list of links: change the label or address, remove one, add one */
-function LinkListEditor({ title, hint, links, onChange }) {
-  const [draft, setDraft] = useState({ label: '', href: '' })
-  const [error, setError] = useState('')
-
-  const edit = (id, field) => (event) => onChange(links.map((link) => (link.id === id ? { ...link, [field]: event.target.value } : link)))
-  const remove = (id) => onChange(links.filter((link) => link.id !== id))
-
-  function add(event) {
-    event.preventDefault()
-    if (!draft.label.trim() || !draft.href.trim()) return setError('Please fill in both the name and the link.')
-    onChange([...links, { id: `l-${Date.now()}`, label: draft.label.trim(), href: draft.href.trim() }])
-    setDraft({ label: '', href: '' })
-    setError('')
-  }
-
-  return (
-    <section className={`${card} p-5`}>
-      <h3 className="font-serif text-lg">{title}</h3>
-      <p className="mb-4 mt-1 text-sm text-ink-soft">{hint}</p>
-      <div className="grid gap-2">
-        {links.length === 0 && <p className="text-sm text-ink-soft">No links yet.</p>}
-        {links.map((link) => (
-          <div key={link.id} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
-            <input value={link.label} onChange={edit(link.id, 'label')} aria-label="Link name" />
-            <input value={link.href} onChange={edit(link.id, 'href')} list="footer-pages" aria-label="Link address" />
-            <button type="button" onClick={() => remove(link.id)} className="text-xs text-ink-soft underline hover:text-rose">Remove</button>
-          </div>
-        ))}
-      </div>
-      <form onSubmit={add} className="mt-4 grid gap-2 border-t border-line pt-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
-        <input value={draft.label} onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))} placeholder="New link name" />
-        <input value={draft.href} onChange={(e) => setDraft((d) => ({ ...d, href: e.target.value }))} list="footer-pages" placeholder="/p/privacy or https://…" />
-        <button type="submit" className={roseButton}>Add</button>
-        {error && <p className="text-[13px] text-lowstock-text sm:col-span-3">{error}</p>}
-      </form>
-    </section>
-  )
-}
+import { card, cx, roseButton } from './adminHelpers.js'
 
 export default function FooterManager({ footer, setFooter }) {
   const [payDraft, setPayDraft] = useState({ label: '', src: '' })
@@ -71,20 +26,6 @@ export default function FooterManager({ footer, setFooter }) {
 
   return (
     <div className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-xl text-sm text-ink-soft">Everything here appears in the footer at the bottom of every shop page. Changes are saved automatically.</p>
-        <button type="button" className={ghostButton} onClick={() => { if (window.confirm('Put the footer back to how it was at the start?')) setFooter(SEED_FOOTER) }}>
-          Restore original footer
-        </button>
-      </div>
-
-      <datalist id="footer-pages">{KNOWN_PAGES.map((path) => <option key={path} value={path} />)}</datalist>
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        <LinkListEditor title="Help links" hint="The “Help” column, for example Contact and About Us." links={footer.helpLinks ?? []} onChange={(next) => patch('helpLinks', () => next)} />
-        <LinkListEditor title="Policy links" hint="The “Customer Policy” column. A link can be a page of the shop (like /p/privacy) or a full website address." links={footer.policyLinks ?? []} onChange={(next) => patch('policyLinks', () => next)} />
-      </div>
-
       <section className={`${card} p-5`}>
         <h3 className="font-serif text-lg">Social media</h3>
         <p className="mb-4 mt-1 text-sm text-ink-soft">Paste the full address of each page. Switch a network off to hide its button.</p>

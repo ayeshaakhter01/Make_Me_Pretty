@@ -1,14 +1,9 @@
 import StoreSettings from "../../../models/StoreSettings.js";
+import Policy from "../../../models/Policy.js";
 import AppError from "../../../utils/AppError.js";
 
 export const DEFAULT_FOOTER = {
   helpLinks: [{ id: "help-contact", label: "Contact", href: "/p/contact" }, { id: "help-about", label: "About Us", href: "/p/about-us" }],
-  policyLinks: [
-    { id: "policy-refund", label: "Refund & Return Policy", href: "/p/refund-return" },
-    { id: "policy-privacy", label: "Privacy Policy", href: "/p/privacy" },
-    { id: "policy-delivery", label: "Delivery Policy", href: "/p/delivery" },
-    { id: "policy-terms", label: "Terms & Condition", href: "/p/terms" },
-  ],
   socials: [
     { name: "Facebook", href: "https://www.facebook.com/share/1GzwwLRMqB/?mibextid=wwXIfr", active: true },
     { name: "Instagram", href: "https://www.instagram.com/makemepretty24", active: true },
@@ -37,16 +32,23 @@ function cleanFooter(footer) {
   const payments = footer.payments ?? [];
   if (!Array.isArray(socials) || socials.length > 20 || socials.some((item) => typeof item.name !== "string" || typeof item.href !== "string" || !/^https:\/\//i.test(item.href))) throw new AppError("Social links must use HTTPS URLs.", 400);
   if (!Array.isArray(payments) || payments.length > 20 || payments.some((item) => typeof item.label !== "string" || !validMedia(item.src))) throw new AppError("Payment logos must use HTTPS or uploaded image paths.", 400);
+  // Policy links are NOT saved here: they always come from the Policy collection (see withPolicyLinks).
   return {
     helpLinks: cleanLinks(footer.helpLinks ?? [], "Help links"),
-    policyLinks: cleanLinks(footer.policyLinks ?? [], "Policy links"),
     socials: socials.map((item) => ({ name: item.name.slice(0, 40), href: item.href.slice(0, 500), active: item.active !== false })),
     payments: payments.map((item) => ({ id: String(item.id || item.label).slice(0, 80), label: item.label.trim().slice(0, 80), src: item.src })),
   };
 }
+// The footer's "Customer policy" column is built from the published policies in the database.
+async function withPolicyLinks(footer) {
+  const policies = await Policy.find({ published: true }).sort({ order: 1, createdAt: 1 }).select("title slug").lean();
+  const { policyPages, ...rest } = footer || {};
+  return { ...rest, policyLinks: policies.map((policy) => ({ id: String(policy._id), label: policy.title, href: `/p/${policy.slug}` })) };
+}
 export async function getStoreSettings() {
-  const saved = await StoreSettings.findOne({ key: "storefront" }).lean();
-  return { logo: saved?.logo || "", footer: saved?.footer || DEFAULT_FOOTER };
+  let saved = await StoreSettings.findOne({ key: "storefront" }).lean();
+  if (!saved) saved = (await StoreSettings.create({ key: "storefront", logo: "", footer: DEFAULT_FOOTER })).toObject();
+  return { logo: saved.logo || "", footer: await withPolicyLinks(saved.footer || DEFAULT_FOOTER) };
 }
 export async function updateStoreSettings(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new AppError("Settings payload must be an object.", 400);
@@ -57,6 +59,6 @@ export async function updateStoreSettings(input) {
   }
   if (Object.hasOwn(input, "footer")) update.footer = cleanFooter(input.footer);
   if (!Object.keys(update).length) throw new AppError("No supported settings were provided.", 400);
-  const saved = await StoreSettings.findOneAndUpdate({ key: "storefront" }, { $set: update, $setOnInsert: { key: "storefront" } }, { new: true, upsert: true, runValidators: true }).lean();
-  return { logo: saved.logo || "", footer: saved.footer || DEFAULT_FOOTER };
+  const saved = await StoreSettings.findOneAndUpdate({ key: "storefront" }, { $set: update, $setOnInsert: { key: "storefront" } }, { returnDocument: "after", upsert: true, runValidators: true }).lean();
+  return { logo: saved.logo || "", footer: await withPolicyLinks(saved.footer || DEFAULT_FOOTER) };
 }

@@ -60,12 +60,21 @@ export default function InventoryManager({ products, setProducts }) {
     } catch (problem) { setError(problem.message) }
   }
 
+  // Soft delete: the backend sets active:false. The product stays in this list, flagged Inactive.
   const remove = async (product) => {
-    if (!window.confirm(`Delete "${product.name}"?`)) return
+    if (!window.confirm(`Delete "${product.name}"? It will be hidden from the shop but kept here as Inactive.`)) return
     try {
       await apiRequest(`/products/${product.id}`, { method: 'DELETE' })
-      setProducts((current) => current.filter((p) => p.id !== product.id))
+      setProducts((current) => current.map((p) => p.id === product.id ? { ...p, active: false } : p))
     } catch (problem) { setError(problem.message) }
+  }
+
+  const restore = async (product) => {
+    try {
+      const saved = await apiRequest(`/products/${product.id}`, { method: 'PATCH', body: JSON.stringify({ active: true }) })
+      setProducts((current) => current.map((p) => p.id === product.id ? { ...p, ...saved, id: saved._id, old: saved.compareAt, desc: saved.description, ing: saved.ingredients || [] } : p))
+      setError('')
+    } catch (problem) { setError(`Could not restore "${product.name}": ${problem.message}`) }
   }
 
   return (
@@ -88,14 +97,13 @@ export default function InventoryManager({ products, setProducts }) {
             {visible.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-10 text-center text-ink-soft">No products found.</td></tr>
             ) : visible.map((product) => (
-              <tr key={product.id}>
+              <tr key={product.id} className={product.active === false ? 'opacity-60' : ''}>
                 <td className={td}>
                   <div className="flex items-center gap-3">
                     <Thumb product={product} />
                     <div className="min-w-0">
                       <div className="font-semibold">{product.name}</div>
                       <div className="text-xs text-ink-soft">{product.type}{product.size ? ` · ${product.size}` : ''}{product.badge ? ` · ${product.badge}` : ''}</div>
-                      {!product.active && <div className="mt-1 text-[10px] font-semibold uppercase text-gold">Draft · add local price, stock & photo</div>}
                     </div>
                   </div>
                 </td>
@@ -103,14 +111,19 @@ export default function InventoryManager({ products, setProducts }) {
                 <td className={`${td} text-ink-soft`}>{product.brand || '—'}</td>
                 <td className={td}>{money(product.price)}{product.old ? <span className="ml-1.5 text-xs text-ink-soft line-through">{money(product.old)}</span> : null}</td>
                 <td className={td}>
-                  <span className={cx('rounded-full px-2.5 py-1 text-[11px] font-medium', product.stock <= 5 ? 'bg-lowstock-bg text-lowstock-text' : 'bg-gold-soft text-gold')}>
-                    {product.stock === 0 ? 'Out of stock' : product.stock <= 5 ? `Low · ${product.stock}` : `${product.stock} in stock`}
-                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={cx('rounded-full px-2.5 py-1 text-[11px] font-medium', product.stock <= 5 ? 'bg-lowstock-bg text-lowstock-text' : 'bg-gold-soft text-gold')}>
+                      {product.stock === 0 ? 'Out of stock' : product.stock <= 5 ? `Low · ${product.stock}` : `${product.stock} in stock`}
+                    </span>
+                    {product.active === false && <span className="rounded-full bg-ink/10 px-2.5 py-1 text-[11px] font-medium text-ink-soft">Inactive</span>}
+                  </div>
                 </td>
                 <td className={td}>
                   <div className="flex gap-4 whitespace-nowrap text-xs">
                     <button type="button" onClick={() => setEditing(product)} className="text-ink-soft underline hover:text-rose">Edit</button>
-                    <button type="button" onClick={() => remove(product)} className="text-ink-soft underline hover:text-rose">Delete</button>
+                    {product.active === false
+                      ? <button type="button" onClick={() => restore(product)} className="text-ink-soft underline hover:text-rose">Restore</button>
+                      : <button type="button" onClick={() => remove(product)} className="text-ink-soft underline hover:text-rose">Delete</button>}
                   </div>
                 </td>
               </tr>

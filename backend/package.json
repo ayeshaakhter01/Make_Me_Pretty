@@ -10,6 +10,7 @@
     "admin:create": "node scripts/createAdmin.js",
     "admin:reset-password": "node scripts/resetAdminPassword.js",
     "seed:promotions": "node scripts/seedPromotions.js",
+    "seed:brands": "node scripts/seedBrands.js",
     "seed:catalog-samples": "node scripts/seedCatalogSamples.js",
     "seed:more-catalog": "node scripts/seedMoreCatalog.js",
     "seed:demo-data": "node scripts/seedDemoData.js",

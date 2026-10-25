@@ -57,7 +57,7 @@ export default function ProductForm({ product, onSave, onClose }) {
         <Field label="Stock"><input type="number" min="0" value={form.stock} onChange={set('stock')} /></Field>
         <Field label="Description" wide><textarea rows={3} value={form.description || form.desc || ''} onChange={set('description')} /></Field>
         <Field label="Ingredients / key ingredients (comma separated)" wide><textarea rows={2} value={Array.isArray(form.ingredients || form.ing) ? (form.ingredients || form.ing).join(', ') : (form.ingredients || form.ing || '')} onChange={set('ingredients')} /></Field>
-        <Field label="How to use" wide><textarea rows={2} value={form.usage || ''} onChange={set('usage')} /></Field>
+        <Field label="How to use (one step per line)" wide><textarea rows={4} value={form.usage || ''} onChange={set('usage')} /></Field>
         <Field label="Suitable skin / hair type" wide><input value={form.skin || ''} onChange={set('skin')} placeholder="e.g. Sensitive skin" /></Field>
 
         {/* a <div>, not a <Field>: a label around buttons would "click" them when its text is clicked */}

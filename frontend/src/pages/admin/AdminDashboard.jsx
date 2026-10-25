@@ -7,6 +7,7 @@ import AnalyticsPanel from '../../components/admin/AnalyticsPanel.jsx'
 import CouponManager from '../../components/admin/CouponManager.jsx'
 import BannersManager from '../../components/admin/BannersManager.jsx'
 import FooterManager from '../../components/admin/FooterManager.jsx'
+import PolicyManager from '../../components/admin/PolicyManager.jsx'
 import ReviewsPanel from '../../components/admin/ReviewsPanel.jsx'
 import UsersPanel from '../../components/admin/UsersPanel.jsx'
 import DeliveryPanel from '../../components/admin/DeliveryPanel.jsx'
@@ -183,7 +184,7 @@ export default function AdminDashboard({ session, onSignOut }) {
           {tab === 'Analytics' && <AnalyticsPanel orders={orders} />}
           {tab === 'Coupons' && <CouponManager coupons={coupons} setCoupons={setCoupons} />}
           {tab === 'Banners' && <BannersManager slides={heroSlides} setSlides={setHeroSlides} logo={logo} setLogo={setLogo} />}
-          {tab === 'Footer' && <><p className="mb-3 text-sm text-ink-soft">{!settingsLoaded ? (settingsError || 'Loading settings from database…') : settingsError || 'Changes save to the database automatically.'}</p><FooterManager footer={footer} setFooter={setFooter} /></>}
+          {tab === 'Footer' && <><p className="mb-3 text-sm text-ink-soft">{!settingsLoaded ? (settingsError || 'Loading settings from database…') : settingsError || 'Changes save to the database automatically.'}</p>{settingsLoaded && <><PolicyManager footer={footer} setFooter={setFooter} /><FooterManager footer={footer} setFooter={setFooter} /></>}</>}
           {tab === 'Reviews' && <ReviewsPanel />}
           {tab === 'Blog' && (
             blogsLoading ? (

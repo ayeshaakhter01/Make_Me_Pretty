@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import SiteLookPanel from './SiteLookPanel.jsx'
+import BrandsManager from './BrandsManager.jsx'
 import { card, cx, ghostButton, roseButton } from './adminHelpers.js'
 import { apiRequest, assetUrl, uploadImage } from '../../api.js'
 
@@ -72,6 +73,11 @@ export default function BannersManager({ slides, setSlides, logo, setLogo }) {
       <section>
         <h2 className="mb-3 font-serif text-xl">Shop look</h2>
         <SiteLookPanel logo={logo} setLogo={setLogo} headerBanners={slides.filter((slide) => slide.placement === 'pageHeader')} onHeaderChange={setSlides} />
+      </section>
+
+      <section>
+        <h2 className="mb-3 font-serif text-xl">Brand logos</h2>
+        <BrandsManager />
       </section>
 
       <section>
