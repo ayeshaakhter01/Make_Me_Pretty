@@ -6,6 +6,7 @@ import {
   createBlog,
   updateBlog,
   deleteBlog,
+  reorderBlogs,
 } from "../services/blogService.js";
 
 import validateBlog from "../../../validators/blogValidator.js";
@@ -129,6 +130,28 @@ export const deleteBlogPost = async (req, res, next) => {
       message: "Blog post deleted successfully",
       data: blog,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+export const reorderBlogPosts = async (req, res, next) => {
+  try {
+    const ids = req.body?.ids;
+
+    if (
+      !Array.isArray(ids) ||
+      ids.length === 0 ||
+      !ids.every((id) => typeof id === "string" && /^[a-f\d]{24}$/i.test(id))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "ids must be a non-empty list of blog post ids",
+      });
+    }
+
+    await reorderBlogs(ids);
+
+    res.status(200).json({ success: true, message: "Blog order saved" });
   } catch (error) {
     next(error);
   }

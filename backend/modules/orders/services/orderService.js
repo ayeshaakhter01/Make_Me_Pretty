@@ -1,6 +1,7 @@
 import Order from "../../../models/Order.js";
 import Product from "../../../models/Product.js";
 import Coupon from "../../../models/Coupon.js";
+import Cart from "../../../models/Cart.js";
 import User from "../../../models/User.js";
 import AppError from "../../../utils/AppError.js";
 import { validateCouponForOrder, redeemCoupon } from "../../coupons/services/couponService.js";
@@ -53,6 +54,8 @@ export async function createOrder(customerId, input) {
     if (couponCode && !(await redeemCoupon(couponCode))) throw new AppError("The coupon has just reached its usage limit.", 409);
     const address = Object.fromEntries(["recipientName", "phone", "addressLine", "area", "city"].map((key) => [key, input.address[key]?.trim() || ""]));
     const order = await Order.create({ orderNumber: makeOrderNumber(), customer: customerId, items, address, subtotal, deliveryCharge, discount, couponCode, total: subtotal + deliveryCharge - discount, paymentMethod: "cod", paymentStatus: "unpaid" });
+    // The order is saved, so empty the saved cart. If this fails, the order must still stay.
+    await Cart.updateOne({ customer: customerId }, { $set: { items: [] } }).catch(() => undefined);
     return order;
   } catch (error) {
     if (reserved.length) await Product.bulkWrite(reserved.map((item) => ({ updateOne: { filter: { _id: item.product }, update: { $inc: { stock: item.quantity } } } })));
@@ -88,6 +91,7 @@ export async function updateOrderStatus(id, status) {
   if (status === "confirmed" && order.status !== "pending") throw new AppError("Only pending orders can be confirmed.", 409);
   if (status === "cancelled") {
     for (const item of order.items) await Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } });
+    if (order.couponCode) await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } });
   }
   order.status = status;
   return order.save();
@@ -161,4 +165,7 @@ export async function collectCodPayment(partnerId, orderId) {
 function unreadCount(order, viewerRole) {
   const seen = viewerRole === "admin" ? order.adminSeenAt : order.partnerSeenAt;
   return (order.messages || []).filter((message) => message.role !== viewerRole && (!seen || new Date(message.at) > new Date(seen))).length;
+}
+export async function hasDeliveredOrderWithProduct(customerId, productId) {
+  return Boolean(await Order.exists({ customer: customerId, status: "delivered", "items.product": productId }));
 }
