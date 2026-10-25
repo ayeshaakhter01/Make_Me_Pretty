@@ -22,6 +22,7 @@ function Thumb({ product }) {
 /* INVENTORY: the product list with search, stock alerts, photos, add / edit / delete. */
 export default function InventoryManager({ products, setProducts }) {
   const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('all') // all | active | inactive
   const [editing, setEditing] = useState(null) // null = closed, 'new' = add, or a product
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -35,8 +36,10 @@ export default function InventoryManager({ products, setProducts }) {
   }, [setProducts])
   const text = search.trim().toLowerCase()
 
+  const inactiveCount = products.filter((p) => p.active === false).length
   const visible = products.filter((p) =>
-    !text || `${p.name} ${p.brand} ${p.category} ${p.type}`.toLowerCase().includes(text)
+    (!text || `${p.name} ${p.brand} ${p.category} ${p.type}`.toLowerCase().includes(text)) &&
+    (status === 'all' || (status === 'inactive' ? p.active === false : p.active !== false))
   )
 
   async function save(product) {
@@ -81,6 +84,11 @@ export default function InventoryManager({ products, setProducts }) {
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, brands, categories..." className="!w-full sm:!w-80" />
+        <div className="flex gap-2 text-sm">
+          {[['all', `All (${products.length})`], ['active', `Active (${products.length - inactiveCount})`], ['inactive', `Inactive (${inactiveCount})`]].map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setStatus(key)} className={cx('rounded-full border px-3 py-1.5', status === key ? 'border-rose bg-pink-soft text-rose-deep' : 'border-line text-ink-soft hover:border-rose')}>{label}</button>
+          ))}
+        </div>
         <button type="button" onClick={() => setEditing('new')} className={`${roseButton} sm:ml-auto`}>+ Add product</button>
       </div>
       {loading && <p className="mb-3 text-sm text-ink-soft">Loading products from database…</p>}
@@ -115,7 +123,7 @@ export default function InventoryManager({ products, setProducts }) {
                     <span className={cx('rounded-full px-2.5 py-1 text-[11px] font-medium', product.stock <= 5 ? 'bg-lowstock-bg text-lowstock-text' : 'bg-gold-soft text-gold')}>
                       {product.stock === 0 ? 'Out of stock' : product.stock <= 5 ? `Low · ${product.stock}` : `${product.stock} in stock`}
                     </span>
-                    {product.active === false && <span className="rounded-full bg-ink/10 px-2.5 py-1 text-[11px] font-medium text-ink-soft">Inactive</span>}
+                    {product.active === false && <span className="rounded-full bg-ink/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">Inactive</span>}
                   </div>
                 </td>
                 <td className={td}>
