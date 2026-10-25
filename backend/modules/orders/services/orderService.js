@@ -6,9 +6,12 @@ import AppError from "../../../utils/AppError.js";
 import { validateCouponForOrder, redeemCoupon } from "../../coupons/services/couponService.js";
 
 const deliveryFee = (subtotal, city) => subtotal >= 3000 || subtotal === 0 ? 0 : city?.trim().toLowerCase() === "chattogram" ? 60 : 120;
-const makeOrderNumber = () => {
-  const day = new Date().toISOString().slice(2, 10).replaceAll("-", "");
-  return `MMP-${day}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+const ORDER_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const makeOrderNumber = (date = new Date()) => {
+  const day = date.toISOString().slice(2, 10).replaceAll("-", "");
+  let code = "";
+  for (let i = 0; i < 6; i += 1) code += ORDER_CODE_CHARS[Math.floor(Math.random() * ORDER_CODE_CHARS.length)];
+  return `MMP-${day}-${code}`;
 };
 const legacyOrderNumber = (order) => {
   const day = new Date(order.createdAt).toISOString().slice(2, 10).replaceAll("-", "");
