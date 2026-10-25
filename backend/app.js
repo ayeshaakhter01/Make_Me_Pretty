@@ -11,7 +11,8 @@ import { requireRole } from "./middlewares/roleMiddleware.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import uploadRoutes from "./modules/uploads/routes/uploadRoutes.js";
-import { productRoutes, categoryRoutes, brandRoutes } from "./modules/catalog/routes/catalogRoutes.js";
+import { productRoutes, categoryRoutes } from "./modules/catalog/routes/catalogRoutes.js";
+import brandRoutes from "./modules/brands/routes/brandRoutes.js";
 import orderRoutes from "./modules/orders/routes/orderRoutes.js";
 import { cartRoutes, wishlistRoutes } from "./modules/shopping/routes/shoppingRoutes.js";
 import { productReviewRoutes, adminReviewRoutes, publicReviewRoutes } from "./modules/reviews/routes/reviewRoutes.js";
@@ -22,6 +23,7 @@ import siteSettingsRoutes from "./modules/siteSettings/routes/siteSettingsRoutes
 import paymentRoutes from "./modules/payments/routes/paymentRoutes.js";
 import { contactMessageRoutes, adminContactMessageRoutes } from "./modules/contactMessages/routes/contactMessageRoutes.js";
 import errorMiddleware from "./middlewares/errorMiddleware.js";
+import policyRoutes from "./modules/policies/routes/policyRoutes.js";
 
 const app = express();
 
@@ -52,6 +54,7 @@ app.use("/api/uploads", uploadRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/brands", brandRoutes);
+app.use("/api/policies", policyRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/delivery", deliveryRoutes);

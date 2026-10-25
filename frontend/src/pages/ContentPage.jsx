@@ -1,30 +1,36 @@
 import { Link, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import AboutUsPage from './AboutUsPage.jsx'
 import ContactPage from './ContactPage.jsx'
-import RefundReturnPage from './RefundReturnPage.jsx'
-import PrivacyPolicyPage from './PrivacyPolicyPage.jsx'
-import DeliveryPolicyPage from './DeliveryPolicyPage.jsx'
-import TermsConditionPage from './TermsConditionPage.jsx'
 import PageContainer from '../components/ui/PageContainer.jsx'
+import PolicyContent from '../components/ui/PolicyContent.jsx'
+import { apiRequest } from '../api.js'
 
-const contentPages = [
-  { slug: 'about-us', title: 'The People Behind Make Me Pretty' },
-  { slug: 'contact', title: 'Contact' },
-  { slug: 'refund-return', title: 'Refund & Return Policy' },
-  { slug: 'privacy', title: 'Privacy Policy' },
-  { slug: 'delivery', title: 'Delivery Policy' },
-  { slug: 'terms', title: 'Terms & Condition' },
-]
+// About Us and Contact are designed pages. Every policy comes from the database (GET /api/policies/:slug).
+const designedPages = { 'about-us': AboutUsPage, contact: ContactPage }
 
 export default function ContentPage() {
   const { slug } = useParams()
-  const page = contentPages.find((content) => content.slug === slug)
-  if (!page) return <PageContainer className="py-24 text-center"><h1 className="font-serif text-3xl">That page is not here.</h1><Link to="/" className="mt-5 inline-block text-rose underline">Back home</Link></PageContainer>
-  if (slug === 'about-us') return <AboutUsPage/>
-  if (slug === 'contact') return <ContactPage/>
-  if (slug === 'refund-return') return <RefundReturnPage/>
-  if (slug === 'privacy') return <PrivacyPolicyPage/>
-  if (slug === 'delivery') return <DeliveryPolicyPage/>
-  if (slug === 'terms') return <TermsConditionPage/>
-  return <PageContainer className="max-w-[810px] py-14"><h1 className="font-serif text-[clamp(28px,4.5vw,40px)] font-normal">{page.title}</h1><p className="mt-6 text-[15px] leading-relaxed text-ink-soft">This page is coming soon. Please check back shortly.</p></PageContainer>
+  const Designed = designedPages[slug]
+  const [state, setState] = useState({ loading: true, policy: null })
+
+  useEffect(() => {
+    if (Designed) return undefined
+    let cancelled = false
+    setState({ loading: true, policy: null })
+    apiRequest(`/policies/${encodeURIComponent(slug)}`)
+      .then((policy) => { if (!cancelled) setState({ loading: false, policy }) })
+      .catch(() => { if (!cancelled) setState({ loading: false, policy: null }) })
+    return () => { cancelled = true }
+  }, [slug, Designed])
+
+  if (Designed) return <Designed />
+  if (state.loading) return <PageContainer className="py-24 text-center">Loading page…</PageContainer>
+  if (!state.policy) return <PageContainer className="py-24 text-center"><h1 className="font-serif text-3xl">That page is not here.</h1><Link to="/" className="mt-5 inline-block text-rose underline">Back home</Link></PageContainer>
+  return (
+    <PageContainer className="max-w-[810px] py-14">
+      <h1 className="font-serif text-[clamp(28px,4.5vw,40px)] font-normal">{state.policy.title}</h1>
+      <PolicyContent text={state.policy.content} />
+    </PageContainer>
+  )
 }

@@ -1,3 +1,4 @@
+import { OFFICIAL_NAMES } from "./officialNames.js";
 // Manufacturer-disclosed product facts. Price, stock, and product photos are
 // intentionally left for the shop owner to verify before publishing.
 export const OFFICIAL_CATALOG_SAMPLES = [
@@ -24,3 +25,4 @@ export const OFFICIAL_CATALOG_SAMPLES = [
   { slug: "cerave-daily-moisturizing-lotion", name: "Daily Moisturizing Lotion", brand: "CeraVe", category: "Body Care", type: "Body Lotion", size: "Confirm pack size", sourceUrl: "https://www.cerave.com/skincare/moisturizers/daily-moisturizing-lotion", description: "Lightweight, oil-free lotion with three essential ceramides for normal to dry skin, according to CeraVe.", ingredients: ["Ceramide NP", "Ceramide AP", "Ceramide EOP", "Hyaluronic Acid"], usage: "Apply to face and body as needed and follow the package directions.", skin: "Normal to dry skin (manufacturer listing)" },
   { slug: "cetaphil-moisturizing-cream", name: "Moisturizing Cream", brand: "Cetaphil", category: "Body Care", type: "Body Cream", size: "453 g", sourceUrl: "https://www.cetaphil.com/us/products/product-categories/all-moisturizers/cream", description: "Rich moisturizer for dry skin on the face and body; follow the current package directions and ingredient list.", ingredients: ["Glycerin", "Petrolatum", "Panthenol"], usage: "Apply generously to dry areas as directed on the product packaging.", skin: "Dry skin" },
 ]
+for (const p of OFFICIAL_CATALOG_SAMPLES) if (OFFICIAL_NAMES[p.slug]) p.name = OFFICIAL_NAMES[p.slug];

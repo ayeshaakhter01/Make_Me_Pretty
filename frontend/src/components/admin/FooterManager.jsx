@@ -6,9 +6,10 @@ import { card, cx, ghostButton, roseButton } from './adminHelpers.js'
 import { assetUrl } from '../../api.js'
 
 /* FOOTER TAB
-   Edits the shop's footer: Help links, Customer Policy links, social media and payment logos.
-   Footer, About, and Contact settings are saved by AdminDashboard. */
-const KNOWN_PAGES = ['/p/contact', '/p/about-us', '/p/refund-return', '/p/privacy', '/p/delivery', '/p/terms']
+   Edits the shop's footer: Help links, social media and payment logos, plus the About and Contact pages.
+   Policies are managed by PolicyManager (their own "policies" collection); the footer's Customer Policy
+   column is built from them automatically. Footer, About, and Contact settings are saved by AdminDashboard. */
+const KNOWN_PAGES = ['/p/contact', '/p/about-us']
 
 /* a list of links: change the label or address, remove one, add one */
 function LinkListEditor({ title, hint, links, onChange }) {
@@ -42,7 +43,7 @@ function LinkListEditor({ title, hint, links, onChange }) {
       </div>
       <form onSubmit={add} className="mt-4 grid gap-2 border-t border-line pt-4 sm:grid-cols-[1fr_1fr_auto] sm:items-center">
         <input value={draft.label} onChange={(e) => setDraft((d) => ({ ...d, label: e.target.value }))} placeholder="New link name" />
-        <input value={draft.href} onChange={(e) => setDraft((d) => ({ ...d, href: e.target.value }))} list="footer-pages" placeholder="/p/privacy or https://…" />
+        <input value={draft.href} onChange={(e) => setDraft((d) => ({ ...d, href: e.target.value }))} list="footer-pages" placeholder="/p/contact or https://…" />
         <button type="submit" className={roseButton}>Add</button>
         {error && <p className="text-[13px] text-lowstock-text sm:col-span-3">{error}</p>}
       </form>
@@ -77,7 +78,7 @@ export default function FooterManager({ footer, setFooter, about, setAbout, cont
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-xl text-sm text-ink-soft">Manage footer links, payment logos, and the About and Contact pages.</p>
+        <p className="max-w-xl text-sm text-ink-soft">Manage footer links, payment logos, and the About and Contact pages. Policies are managed in the Policies section.</p>
         <button type="button" className={ghostButton} onClick={() => { if (window.confirm('Put the footer back to how it was at the start?')) setFooter(SEED_FOOTER) }}>
           Restore original footer
         </button>
@@ -85,10 +86,7 @@ export default function FooterManager({ footer, setFooter, about, setAbout, cont
 
       <datalist id="footer-pages">{KNOWN_PAGES.map((path) => <option key={path} value={path} />)}</datalist>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <LinkListEditor title="Help links" hint="The “Help” column, for example Contact and About Us." links={footer.helpLinks ?? []} onChange={(next) => patch('helpLinks', () => next)} />
-        <LinkListEditor title="Policy links" hint="The “Customer Policy” column. A link can be a page of the shop (like /p/privacy) or a full website address." links={footer.policyLinks ?? []} onChange={(next) => patch('policyLinks', () => next)} />
-      </div>
+      <LinkListEditor title="Help links" hint="The “Help” column, for example Contact and About Us." links={footer.helpLinks ?? []} onChange={(next) => patch('helpLinks', () => next)} />
 
       <section className={`${card} p-5`}>
         <h3 className="font-serif text-lg">Social media</h3>

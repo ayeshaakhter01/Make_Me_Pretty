@@ -11,10 +11,16 @@ export function CatalogProvider({ children }) {
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     let current = true
-    Promise.all([apiRequest('/products?limit=60'), apiRequest('/categories')])
-      .then(([result, categoryNames]) => {
+    // The API returns at most 60 products per page, so load every page (otherwise older products and whole categories go missing).
+    const loadAllProducts = async () => {
+      const first = await apiRequest('/products?limit=60&page=1')
+      const rest = await Promise.all(Array.from({ length: Math.max(0, (first.pages || 1) - 1) }, (_, index) => apiRequest(`/products?limit=60&page=${index + 2}`)))
+      return [first, ...rest].flatMap((page) => page.data)
+    }
+    Promise.all([loadAllProducts(), apiRequest('/categories')])
+      .then(([allProducts, categoryNames]) => {
         if (!current) return
-        const loadedProducts = result.data.map(formatProduct)
+        const loadedProducts = allProducts.map(formatProduct)
         setProducts(loadedProducts)
         setCategories(categoryNames.map((name) => ({ name, note: CATEGORIES.find((item) => item.name.toLowerCase() === name.toLowerCase())?.blurb || `Shop ${name.toLowerCase()} essentials`, types: [...new Set(loadedProducts.filter((product) => product.category === name).map((product) => product.type))] })))
       })

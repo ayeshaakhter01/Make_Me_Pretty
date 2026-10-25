@@ -80,12 +80,13 @@ export async function updateProduct(id, data) {
   const merged = Object.fromEntries(allowed.map((key) => [key, data[key] === undefined ? existing[key] : data[key]]));
   const update = cleanProductData(merged);
   if (!Object.keys(data).length) throw new AppError("Provide product fields to update.", 400);
-  const product = await Product.findByIdAndUpdate(id, update, { new: true, runValidators: true }).select("-__v");
+  const product = await Product.findByIdAndUpdate(id, update, { returnDocument: "after", runValidators: true }).select("-__v");
   if (!product) throw new AppError("Product not found.", 404);
   return product;
 }
+// Soft delete: the product stays in the database (orders and reviews keep pointing at it) but is hidden from the shop.
 export async function deleteProduct(id) {
-  const product = await Product.findByIdAndUpdate(id, { active: false }, { new: true }).select("-__v");
+  const product = await Product.findByIdAndUpdate(id, { active: false }, { returnDocument: "after" }).select("-__v");
   if (!product) throw new AppError("Product not found.", 404);
   return product;
 }

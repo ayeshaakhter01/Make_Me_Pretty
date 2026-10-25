@@ -1,14 +1,9 @@
 import StoreSettings from "../../../models/StoreSettings.js";
+import Policy from "../../../models/Policy.js";
 import AppError from "../../../utils/AppError.js";
 
 export const DEFAULT_FOOTER = {
   helpLinks: [{ id: "help-contact", label: "Contact", href: "/p/contact" }, { id: "help-about", label: "About Us", href: "/p/about-us" }],
-  policyLinks: [
-    { id: "policy-refund", label: "Refund & Return Policy", href: "/p/refund-return" },
-    { id: "policy-privacy", label: "Privacy Policy", href: "/p/privacy" },
-    { id: "policy-delivery", label: "Delivery Policy", href: "/p/delivery" },
-    { id: "policy-terms", label: "Terms & Condition", href: "/p/terms" },
-  ],
   socials: [
     { name: "Facebook", href: "https://www.facebook.com/share/1GzwwLRMqB/?mibextid=wwXIfr", active: true },
     { name: "Instagram", href: "https://www.instagram.com/makemepretty24", active: true },
@@ -52,12 +47,18 @@ function cleanFooter(footer) {
   const payments = footer.payments ?? [];
   if (!Array.isArray(socials) || socials.length > 20 || socials.some((item) => typeof item.name !== "string" || typeof item.href !== "string" || !/^https:\/\//i.test(item.href))) throw new AppError("Social links must use HTTPS URLs.", 400);
   if (!Array.isArray(payments) || payments.length > 20 || payments.some((item) => typeof item.label !== "string" || !validMedia(item.src))) throw new AppError("Payment logos must use HTTPS or uploaded image paths.", 400);
+  // Policy links are NOT saved here: they always come from the Policy collection (see withPolicyLinks).
   return {
     helpLinks: cleanLinks(footer.helpLinks ?? [], "Help links"),
-    policyLinks: cleanLinks(footer.policyLinks ?? [], "Policy links"),
     socials: socials.map((item) => ({ name: item.name.slice(0, 40), href: item.href.slice(0, 500), active: item.active !== false })),
     payments: payments.map((item) => ({ id: String(item.id || item.label).slice(0, 80), label: item.label.trim().slice(0, 80), src: normalizePaymentImagePath(item.src) })),
   };
+}
+// The footer's "Customer policy" column is built from the published policies in the database.
+async function withPolicyLinks(footer) {
+  const policies = await Policy.find({ published: true }).sort({ order: 1, createdAt: 1 }).select("title slug").lean();
+  const { policyPages, ...rest } = footer || {};
+  return { ...rest, policyLinks: policies.map((policy) => ({ id: String(policy._id), label: policy.title, href: `/p/${policy.slug}` })) };
 }
 function cleanAbout(about) {
   if (!Array.isArray(about) || about.length > 20) throw new AppError("About page sections must be a list of up to 20 entries.", 400);
@@ -86,13 +87,13 @@ function cleanContact(contact) {
 export async function getStoreSettings() {
   const saved = await StoreSettings.findOne({ key: "storefront" }).lean();
   const storedFooter = saved?.footer || DEFAULT_FOOTER;
-  const footer = {
+  const footer = await withPolicyLinks({
     ...storedFooter,
     payments: (Array.isArray(storedFooter.payments) ? storedFooter.payments : []).map((payment) => ({
       ...payment,
       src: typeof payment.src === "string" ? normalizePaymentImagePath(payment.src) : payment.src,
     })),
-  };
+  });
   return { logo: saved?.logo || "", footer, about: saved?.about ?? DEFAULT_ABOUT, contact: saved?.contact ?? DEFAULT_CONTACT };
 }
 export async function updateStoreSettings(input) {
@@ -106,6 +107,6 @@ export async function updateStoreSettings(input) {
   if (Object.hasOwn(input, "about")) update.about = cleanAbout(input.about);
   if (Object.hasOwn(input, "contact")) update.contact = cleanContact(input.contact);
   if (!Object.keys(update).length) throw new AppError("No supported settings were provided.", 400);
-  const saved = await StoreSettings.findOneAndUpdate({ key: "storefront" }, { $set: update, $setOnInsert: { key: "storefront" } }, { new: true, upsert: true, runValidators: true }).lean();
-  return { logo: saved.logo || "", footer: saved.footer || DEFAULT_FOOTER, about: saved.about ?? DEFAULT_ABOUT, contact: saved.contact ?? DEFAULT_CONTACT };
+  const saved = await StoreSettings.findOneAndUpdate({ key: "storefront" }, { $set: update, $setOnInsert: { key: "storefront" } }, { returnDocument: "after", upsert: true, runValidators: true }).lean();
+  return { logo: saved.logo || "", footer: await withPolicyLinks(saved.footer || DEFAULT_FOOTER), about: saved.about ?? DEFAULT_ABOUT, contact: saved.contact ?? DEFAULT_CONTACT };
 }

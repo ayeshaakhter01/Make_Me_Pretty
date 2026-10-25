@@ -98,7 +98,6 @@ export default function DeliveryPolicyPage() {
       </div>
 
       <div className="mt-12 rounded-2xl border border-line bg-cream p-5 text-[14px] leading-relaxed text-ink-soft">
-        Want to see where your order is? <Link to="/track" className="font-medium text-rose underline underline-offset-4 hover:text-rose-deep">Track your order</Link>.
         Problem with a delivery? <Link to="/p/contact" className="font-medium text-rose underline underline-offset-4 hover:text-rose-deep">Contact us</Link>.
       </div>
     </PageContainer>

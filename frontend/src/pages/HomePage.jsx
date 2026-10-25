@@ -20,7 +20,7 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false
     apiRequest('/products/best-sellers').then((data) => {
-      if (!cancelled) setBestSellers(data.map((product) => ({ ...product, id: String(product._id), old: product.compareAt ?? null, desc: product.description ?? '', ing: product.ingredients ?? [], badge: 'Bestseller' })))
+      if (!cancelled) setBestSellers(data.map((product) => ({ ...product, id: String(product._id), old: product.compareAt ?? null, desc: product.description ?? '', ing: product.ingredients ?? [] })))
     }).catch(() => { if (!cancelled) setBestSellers([]) })
     return () => { cancelled = true }
   }, [])

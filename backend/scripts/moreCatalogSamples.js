@@ -1,3 +1,4 @@
+import { OFFICIAL_NAMES } from "./officialNames.js";
 // Product identity, listed price and descriptive facts checked against the
 // linked Bangladesh retailer pages on 2026-10-24. Store stock is coursework
 // inventory and must be replaced with a physical count before real sales.
@@ -11,3 +12,4 @@ export const MORE_CATALOG_SAMPLES = [
   { slug: "livon-anti-frizz-serum-18ml", name: "Anti Frizz Serum", brand: "Livon", category: "Hair Care", type: "Hair Serum", size: "18 ml", price: 99, compareAt: 140, sourceUrl: "https://shop.shajgoj.com/product/livon-anti-frizz-serum-180ml", priceSourceUrl: "https://shop.shajgoj.com/product/livon-anti-frizz-serum-180ml", images: ["https://static-01.daraz.com.bd/p/8a60bc13950078d5645b1098496c0cbf.jpg"], description: "Leave-in anti-frizz hair serum in an 18 ml size.", ingredients: [], usage: "Apply a small amount to damp or dry hair lengths, avoiding the scalp. Follow package directions.", skin: "Hair" },
   { slug: "sesa-strong-roots-herbal-hair-oil-110ml", name: "Strong Roots Herbal Hair Oil", brand: "Sesa", category: "Hair Care", type: "Hair Oil", size: "110 ml", price: 149, compareAt: 295, sourceUrl: "https://shop.shajgoj.com/product/sesa-strong-roots-herbal-hair-oil", priceSourceUrl: "https://shop.shajgoj.com/product/sesa-strong-roots-herbal-hair-oil", images: ["https://bk.shajgoj.com/storage/2024/08/30378.png"], description: "Herbal hair oil listing from Sesa's Strong Roots range.", ingredients: [], usage: "Massage into scalp and hair as directed on the product packaging.", skin: "Hair and scalp" },
 ];
+for (const p of MORE_CATALOG_SAMPLES) if (OFFICIAL_NAMES[p.slug]) p.name = OFFICIAL_NAMES[p.slug];
