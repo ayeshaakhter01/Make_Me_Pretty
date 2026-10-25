@@ -1,0 +1,302 @@
+{
+  "name": "5 Share Your Experience",
+  "description": "Product review API checks. Run 0 Setup first to fill customerToken, adminToken, and productId in the Local Environment.",
+  "item": [
+    {
+      "name": "List approved product reviews (public)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/products/{{productId}}/reviews"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Product reviews endpoint returns 200',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code===200)pm.test('Response contains only approved reviews and a rating summary',()=>{const d=pm.response.json().data;pm.expect(d.reviews).to.be.an('array');pm.expect(d.reviews.every(review=>review.status==='approved')).to.eql(true);pm.expect(d.rating).to.be.an('object');});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Submit Share Your Experience review (customer)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"rating\": 5,\n  \"title\": \"Postman review check\",\n  \"text\": \"This is a Postman check of the product experience review form.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/products/{{productId}}/reviews",
+        "description": "Creates a pending review tied to the signed-in customer. The API permits one review per customer per product; choose another productId if a duplicate already exists."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.unset('reviewTestId');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Review is created or correctly rejected as an existing duplicate',()=>pm.expect([201,409]).to.include(pm.response.code));",
+              "if(pm.response.code===201){const d=pm.response.json().data;pm.collectionVariables.set('reviewTestId',d._id);pm.test('New review starts pending and is server-linked to customer',()=>{pm.expect(d.status).to.eql('pending');pm.expect(d.customer).to.exist;});}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject invalid review rating",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"rating\": 6,\n  \"text\": \"This rating is outside the allowed range.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/products/{{productId}}/reviews"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Invalid review is rejected with 400',()=>pm.response.to.have.status(400));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject duplicate review for same customer and product",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"rating\": 5,\n  \"title\": \"Duplicate review check\",\n  \"text\": \"A customer cannot submit another review for this product.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/products/{{productId}}/reviews"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Unique customer-product review constraint returns 409',()=>pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin review list rejects unauthenticated request",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/admin/reviews?status=pending"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Admin review list requires authentication',()=>pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Customer cannot access admin review list",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{customerToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/admin/reviews?status=pending"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Customer is forbidden from admin review list',()=>pm.response.to.have.status(403));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin lists pending reviews",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/admin/reviews?status=pending"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Admin can list pending reviews',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code===200){const data=pm.response.json().data;pm.test('Admin review response is an array',()=>pm.expect(data).to.be.an('array'));const id=pm.collectionVariables.get('reviewTestId');if(id)pm.test('New pending review appears in the admin list',()=>pm.expect(data.some(review=>review._id===id)).to.eql(true));}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reject Postman-created review (admin)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"rejected\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/admin/reviews/{{reviewTestId}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if(!pm.collectionVariables.get('reviewTestId'))pm.execution.skipRequest();"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Admin can reject a review',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code===200)pm.test('Review status is now rejected',()=>pm.expect(pm.response.json().data.status).to.eql('rejected'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delete Postman-created review (cleanup)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/admin/reviews/{{reviewTestId}}"
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if(!pm.collectionVariables.get('reviewTestId'))pm.execution.skipRequest();"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Postman review cleanup succeeds',()=>pm.response.to.have.status(200));",
+              "if(pm.response.code===200)pm.collectionVariables.unset('reviewTestId');"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "collectionVariables": [
+    {
+      "key": "reviewTestId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

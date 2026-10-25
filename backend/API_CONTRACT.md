@@ -99,16 +99,21 @@ so it will map them when connected.
 
 ## 5. Reports
 
-Proposed endpoints: `GET /api/admin/reports/sales` and `GET /api/admin/reports/products`.
+Implemented admin endpoints: `GET /api/admin/reports/sales` and `GET /api/admin/reports/products`.
 
 Response shape (already produced by `buildSalesReport` in `utils/reportCalculator.js`):
 ```json
 { "summary": { "totalOrders": 4, "cancelledOrders": 1, "activeOrders": 3,
-               "receivedRevenue": 5800, "pendingPaymentAmount": 1350 },
+               "receivedRevenue": 5800, "receivedOrderCount": 2,
+               "averageReceivedOrderValue": 2900, "pendingPaymentAmount": 1350 },
   "statusBreakdown": { "delivered": 2, "confirmed": 1, "cancelled": 1 },
   "salesByDate": [ { "date": "2026-10-20", "orders": 1, "revenue": 2700 } ],
+  "salesByMonth": [ { "month": "2026-10", "orders": 4, "revenue": 9800 } ],
   "bestSellingProducts": [ { "product": "p1", "name": "...", "unitsSold": 3, "revenue": 3750 } ],
-  "paymentMethods": [ { "method": "cod", "orders": 2, "totalAmount": 4450, "receivedAmount": 3100 } ] }
+  "paymentMethods": [ { "method": "cod", "orders": 2, "totalAmount": 4450, "receivedAmount": 3100 } ],
+  "receivedOrders": [ { "id": "...", "orderNumber": "...", "date": "2026-10-20", "month": "2026-10",
+                       "customer": "...", "items": "...", "total": 2700,
+                       "paymentMethod": "sslcommerz" } ] }
 ```
 
 Sales rules (from the guide): cancelled orders are excluded; **unpaid COD is not received revenue**;
@@ -118,7 +123,7 @@ days are counted in Bangladesh time (Asia/Dhaka).
 ```
 status:        "pending" | "confirmed" | "shipped" | "outForDelivery" | "delivered" | "cancelled"
 paymentMethod: "cod" | "bkash" | ...
-paymentStatus: "unpaid" | "paid" | ...
+paymentStatus: "pending" | "unpaid" (legacy) | "paid" | "failed" | "cancelled" | "refunded"
 total:         Number (taka, calculated by the backend)
 createdAt:     Date
 items:         [{ product, name, quantity, price }]   // name and price saved at purchase time
@@ -126,7 +131,54 @@ items:         [{ product, name, quantity, price }]   // name and price saved at
 If the Order model uses different names or values, only the constants and field reads at the top of
 `utils/reportCalculator.js` need to change.
 
+Payment records live in the `payments` collection and reference an Order. Each record represents one
+attempt; `(order, attemptNumber)`, `(order, idempotencyKey)`, internal transaction reference, and
+optional gateway transaction ID are unique. Records store method, BDT amount, gateway, status, and
+limited provider verification metadata. Never store card
+numbers, CVVs, PINs, passwords, or wallet credentials. `status` on Order remains fulfillment state;
+it is separate from `paymentStatus`.
+
+### COD order API
+
+`POST /api/orders` requires a customer JWT and an `Idempotency-Key` header (16–100 URL-safe
+characters). Reuse the same key for retries of the same checkout; the server returns the original
+order for a matching request and responds `409` if that key is reused with different checkout data.
+The key is unique per customer. The body contains product IDs and quantities, delivery address,
+`paymentMethod: "cod"`, and an optional coupon code. Do not send a total or discount: product prices,
+stock availability, delivery charge, coupon validity/discount, and final amount are verified or
+calculated by the backend.
+
+Success is `201` with `{ "success": true, "data": <order> }`. A COD Order has one associated
+Payment starting `pending`. An SSLCommerz Order remains `pending` until an attempt is initiated.
+Order fulfillment can move through
+`pending → confirmed → shipped → outForDelivery → delivered`; that progression never marks COD paid.
+An unpaid COD order cancelled by an authorized admin becomes payment `cancelled`. A paid order cannot
+be cancelled through the fulfillment endpoint.
+
+`POST /api/delivery/assignments/:id/collect-cod` requires a delivery-partner JWT and the order must
+be assigned to that partner, have method `cod`, and be `outForDelivery` or `delivered`. It is the
+only current collection endpoint. It moves both Order `paymentStatus` and its Payment record from
+`pending` (legacy Order `unpaid` is also supported) to `paid`. Repeating a successful confirmation
+returns the already-paid order. Unassigned partners, other roles, and early collection attempts
+are rejected.
+
+### SSLCommerz sandbox API
+
+`GET /api/payments/config` reports whether sandbox checkout is configured without returning secrets.
+`POST /api/payments/sslcommerz/initiate` requires a customer JWT and `{ "orderId": "..." }`, plus an
+`Idempotency-Key` header. It verifies order ownership and reads the payable amount from MongoDB.
+Success is `201` with `{ "success": true, "data": { "paymentId", "transactionId", "redirectUrl" } }`;
+the browser navigates to the SSLCommerz hosted page. A browser return is not payment confirmation.
+
+SSLCommerz posts to `/api/payments/sslcommerz/success`, `/fail`, `/cancel`, and `/ipn`. The backend
+queries SSLCommerz sandbox validation/transaction APIs and compares transaction ID, amount, and BDT
+currency before changing a Payment. Only a validated, non-risk payment moves Payment and Order
+payment status to `paid`; pending or risk-held results stay pending. Verified failure/cancel results
+update the attempt and order payment state. Browser callbacks redirect to
+`/payment-result?orderId=...`, where the signed-in customer can view the Order status.
+
 ## 6. Baseline assumptions to confirm
-1. Order and payment status values are those in section 5; COD is the only enabled method.
+1. Order and payment status values are those in section 5. SSLCommerz integration is sandbox-only;
+   this does not establish production credentials or live payment readiness.
 2. Image uploads use local `backend/uploads` storage in development. Production should use persistent or hosted storage.
 3. Delivery is free at ৳3000, ৳60 inside Chattogram, and ৳120 elsewhere. Confirm this business rule with the team.

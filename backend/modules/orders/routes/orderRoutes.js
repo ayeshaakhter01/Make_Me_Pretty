@@ -4,7 +4,7 @@ import { requireAuth } from "../../../middlewares/authMiddleware.js";
 import { requireRole } from "../../../middlewares/roleMiddleware.js";
 const router = express.Router();
 router.use(requireAuth);
-router.post("/", createOrder);
+router.post("/", requireRole("customer"), createOrder);
 router.get("/my", myOrders);
 router.get("/admin/all", requireRole("admin"), allOrders);
 router.get("/admin/:id/messages", requireRole("admin"), getOrderMessages);

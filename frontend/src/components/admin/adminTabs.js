@@ -9,5 +9,6 @@ export const ADMIN_TABS = [
   { id: 'Reviews', icon: '/icons/admin/reviews.png' },
   { id: 'Blog', icon: '/icons/admin/blog.png' },
   { id: 'Users', icon: '/icons/admin/users.png' },
+  { id: 'Contact', icon: '/icons/admin/contact.svg' },
   { id: 'Delivery', icon: '/icons/admin/delivery.png' },
 ]

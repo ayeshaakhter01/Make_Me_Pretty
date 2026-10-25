@@ -1,6 +1,6 @@
 import * as service from "../services/orderService.js";
 const respond = (fn, status = 200) => async (req, res, next) => { try { const data = await fn(req); res.status(status).json({ success: true, data }); } catch (error) { next(error); } };
-export const createOrder = respond((req) => service.createOrder(req.user._id, req.body), 201);
+export const createOrder = respond((req) => service.createOrder(req.user._id, req.body, req.get("Idempotency-Key")), 201);
 export const myOrders = respond((req) => service.getMyOrders(req.user._id));
 export const myOrder = respond((req) => service.getMyOrder(req.user._id, req.params.id));
 export const allOrders = respond(() => service.getAllOrders());
