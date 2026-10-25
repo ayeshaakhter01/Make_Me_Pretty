@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Modal from './Modal.jsx'
 import OrderInvoice from './OrderInvoice.jsx'
 import OrderMessages from './OrderMessages.jsx'
@@ -8,10 +8,13 @@ import { apiRequest } from '../../api.js'
 /* ORDERS: filter by stage, change the stage, assign a delivery partner,
    view the invoice, and CHAT with the delivery partner about an order.
    An order with a reported problem shows a red "Issue" tag until it is resolved. */
-export default function OrdersTable({ orders, setOrders, partners }) {
+export default function OrdersTable({ orders, setOrders, partners, openChatId, onChatOpened }) {
   const [stage, setStage] = useState('all') // 'all' or a stage number
   const [invoice, setInvoice] = useState(null)
   const [chatId, setChatId] = useState(null)
+  useEffect(() => {
+    if (openChatId) { setChatId(openChatId); onChatOpened?.() }
+  }, [openChatId, onChatOpened])
 
   const update = async (id, changes) => {
     const order = orders.find((item) => item.id === id)
@@ -87,9 +90,7 @@ export default function OrdersTable({ orders, setOrders, partners }) {
                     <div className="mt-1 text-xs text-ink-soft">{order.method}</div>
                   </td>
                   <td className={td}>
-                    <select value={order.status} onChange={(event) => update(order.id, { status: Number(event.target.value) })} className="!w-auto !py-2 text-[13px]">
-                      {ORDER_STATUSES.map((name, index) => <option key={name} value={index}>{name}</option>)}
-                    </select>
+                    <span className="text-[13px]">{ORDER_STATUSES[order.status]}</span>
                   </td>
                   <td className={td}>
                     <select value={order.partner} onChange={(event) => update(order.id, { partner: event.target.value })} className="!w-auto !py-2 text-[13px]" aria-label={`Delivery partner for ${order.id}`}>
@@ -102,7 +103,9 @@ export default function OrdersTable({ orders, setOrders, partners }) {
                       <span className="whitespace-nowrap text-xs text-gold">{order.status === DELIVERED ? '✓ Delivered' : 'Cancelled'}</span>
                     ) : (
                       <div className="flex items-center gap-2 whitespace-nowrap">
-                        <button type="button" onClick={() => update(order.id, { status: order.status + 1 })} className="rounded-full bg-rose px-3.5 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-rose-deep">→ {ORDER_STATUSES[order.status + 1]}</button>
+                        {order.status === 0
+                          ? <button type="button" onClick={() => update(order.id, { status: 1 })} className="rounded-full bg-rose px-3.5 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-rose-deep">→ Confirmed</button>
+                          : <span className="text-xs text-ink-soft">{order.partner ? 'Delivery partner updates this' : 'Assign a delivery partner'}</span>}
                         <button type="button" onClick={() => update(order.id, { status: CANCELLED })} className="text-xs text-ink-soft underline hover:text-rose">Cancel</button>
                       </div>
                     )}
@@ -123,7 +126,7 @@ export default function OrdersTable({ orders, setOrders, partners }) {
       {invoice && <OrderInvoice order={orders.find((order) => order.id === invoice.id) ?? invoice} onClose={() => setInvoice(null)} />}
 
       {chatOrder && (
-        <Modal title={`Chat · ${chatOrder.id}`} onClose={() => setChatId(null)}>
+        <Modal title={`Chat · ${chatOrder.orderNumber || chatOrder.id}`} onClose={() => setChatId(null)}>
           <p className="mb-3 text-[13px] text-ink-soft">
             {chatOrder.partnerName ? `Delivery partner: ${chatOrder.partnerName}` : 'No delivery partner assigned yet.'}
             {chatOrder.issue && <span className="ml-2 text-lowstock-text">Reported: {chatOrder.issue}</span>}

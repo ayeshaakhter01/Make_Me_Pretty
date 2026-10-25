@@ -77,11 +77,12 @@ export async function getAllOrders() {
   return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
 }
 export async function updateOrderStatus(id, status) {
-  const allowed = ["confirmed", "shipped", "outForDelivery", "delivered", "cancelled"];
+    const allowed = ["confirmed", "cancelled"];
   if (!allowed.includes(status)) throw new AppError(`Status must be one of: ${allowed.join(", ")}.`, 400);
   const order = await Order.findById(id);
   if (!order) throw new AppError("Order not found.", 404);
   if (["cancelled", "delivered"].includes(order.status)) throw new AppError("This order can no longer change status.", 409);
+  if (status === "confirmed" && order.status !== "pending") throw new AppError("Only pending orders can be confirmed.", 409);
   if (status === "cancelled") {
     for (const item of order.items) await Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } });
   }
@@ -98,7 +99,10 @@ export async function assignDeliveryPartner(orderId, userId) {
   if (order.status === "pending") order.status = "confirmed";
   return order.save();
 }
-export const getAssignments = (partnerId) => Order.find({ deliveryPartner: partnerId, status: { $nin: ["cancelled", "delivered"] } }).sort({ createdAt: 1 }).populate("customer", "name phone").lean();
+export async function getAssignments(partnerId) {
+  const orders = await Order.find({ deliveryPartner: partnerId, status: { $ne: "cancelled" } }).sort({ createdAt: 1 }).populate("customer", "name phone").lean();
+  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
+}
 export async function getAssignment(partnerId, orderId) {
   const order = await Order.findOne({ _id: orderId, deliveryPartner: partnerId }).populate("customer", "name phone").lean();
   if (!order) throw new AppError("Delivery assignment not found.", 404);
