@@ -131,7 +131,15 @@ export default function AdminDashboard({ session, onSignOut }) {
     }
   }, [])
 
-
+  /* the products are needed on every tab for the "Low-stock alerts" box */
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/products/admin/all')
+      .then((result) => { if (!cancelled) setProducts(result.map((p) => ({ ...p, id: p._id, old: p.compareAt, desc: p.description, ing: p.ingredients || [] }))) })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [])
+  
   /* numbers for the boxes at the top */
   const stats = useMemo(() => {
     const paid = orders.filter((o) => o.pay === 'Paid' && o.status !== CANCELLED)
