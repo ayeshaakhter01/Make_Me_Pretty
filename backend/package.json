@@ -14,6 +14,7 @@
     "seed:catalog-samples": "node scripts/seedCatalogSamples.js",
     "seed:more-catalog": "node scripts/seedMoreCatalog.js",
     "products:rename": "node scripts/renameProducts.js",
+    "seed:more-catalog-2": "node scripts/seedMoreCatalog2.js",
     "seed:demo-data": "node scripts/seedDemoData.js",
     "reviews:refresh-preview": "node scripts/refreshPreviewReviews.js",
     "orders:backfill-numbers": "node scripts/backfillOrderNumbers.js",

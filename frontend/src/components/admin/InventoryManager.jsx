@@ -37,9 +37,11 @@ export default function InventoryManager({ products, setProducts }) {
   const text = search.trim().toLowerCase()
 
   const inactiveCount = products.filter((p) => p.active === false).length
+  const isOut = (p) => p.active !== false && (Number(p.stock) || 0) <= 0
+  const outCount = products.filter(isOut).length
   const visible = products.filter((p) =>
     (!text || `${p.name} ${p.brand} ${p.category} ${p.type}`.toLowerCase().includes(text)) &&
-    (status === 'all' || (status === 'inactive' ? p.active === false : p.active !== false))
+    (status === 'all' || (status === 'outofstock' ? isOut(p) : status === 'inactive' ? p.active === false : p.active !== false))
   )
 
   async function save(product) {
@@ -65,7 +67,6 @@ export default function InventoryManager({ products, setProducts }) {
 
   // Soft delete: the backend sets active:false. The product stays in this list, flagged Inactive.
   const remove = async (product) => {
-    if (!window.confirm(`Delete "${product.name}"? It will be hidden from the shop but kept here as Inactive.`)) return
     try {
       await apiRequest(`/products/${product.id}`, { method: 'DELETE' })
       setProducts((current) => current.map((p) => p.id === product.id ? { ...p, active: false } : p))
@@ -85,7 +86,7 @@ export default function InventoryManager({ products, setProducts }) {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, brands, categories..." className="!w-full sm:!w-80" />
         <div className="flex gap-2 text-sm">
-          {[['all', `All (${products.length})`], ['active', `Active (${products.length - inactiveCount})`], ['inactive', `Inactive (${inactiveCount})`]].map(([key, label]) => (
+          {[['all', `All (${products.length})`], ['active', `Active (${products.length - inactiveCount})`], ['inactive', `Inactive (${inactiveCount})`], ['outofstock', `Out of stock (${outCount})`]].map(([key, label]) => (
             <button key={key} type="button" onClick={() => setStatus(key)} className={cx('rounded-full border px-3 py-1.5', status === key ? 'border-rose bg-pink-soft text-rose-deep' : 'border-line text-ink-soft hover:border-rose')}>{label}</button>
           ))}
         </div>

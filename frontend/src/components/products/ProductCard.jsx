@@ -30,7 +30,7 @@ export default function ProductCard({ product }) {
         <div className="px-1.5 pt-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft">{product.type}</p>
           <h3 className="mb-1 mt-1 font-serif text-[19px] leading-snug">{product.name}</h3>
-          <p className="flex items-center gap-2 text-xs text-ink-soft"><span className="text-gold">★ {product.rating}</span><span>({product.reviews})</span></p>
+          <p className="flex items-center gap-2 text-xs text-ink-soft"><span className="text-gold">★ {product.rating}</span><span className={Number(product.stock) > 0 ? '' : 'text-lowstock-text'}>({Number(product.stock) > 0 ? `${product.stock} in stock` : 'Out of stock'})</span></p>
         </div>
       </Link>
         <button type="button" onClick={() => toggleWishlist(product)} aria-label={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`} aria-pressed={saved} className={`absolute right-3 top-3 z-10 grid size-9 place-items-center rounded-full border border-line bg-cream/95 transition hover:scale-105 ${saved ? 'text-rose' : 'text-ink-soft hover:text-rose'}`}><Icon name="heart" className="size-[17px]" fill={saved ? 'currentColor' : 'none'} /></button>
