@@ -46,11 +46,20 @@ export default function CustomerAccountPage() {
       setPageError('That order is not in your account history. Check the order number and try again.')
       return
     }
-    if (!order.address?.phone) {
-      setPageError('This order has no checkout phone number saved. Please contact the store to track it.')
-      return
+    navigate(`/track?id=${encodeURIComponent(order.orderNumber || order._id)}`)
+  }
+
+  async function cancelOrder(order) {
+    if (!window.confirm(`Cancel order ${order.orderNumber}?`)) return
+    setPageError('')
+    setMessage('')
+    try {
+      const updated = await apiRequest(`/orders/${order._id}/cancel`, { method: 'POST' })
+      setOrders((current) => current.map((item) => (item._id === updated._id ? { ...item, status: updated.status } : item)))
+      setMessage('Order cancelled.')
+    } catch (error) {
+      setPageError(error.message)
     }
-    navigate(`/track?id=${encodeURIComponent(order.orderNumber || order._id)}&phone=${encodeURIComponent(order.address.phone)}`)
   }
 
   useEffect(() => {
@@ -551,7 +560,7 @@ export default function CustomerAccountPage() {
                 </div> : <div className="mt-6 grid gap-4">{orders.map((order) => <article key={order._id} className="rounded-3xl border border-line bg-cream p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs text-ink-soft">Order number</p><h3 className="font-serif text-xl">{order.orderNumber || order._id}</h3><p className="mt-1 text-xs text-ink-soft">{new Date(order.createdAt).toLocaleString()}</p></div><span className="rounded-full bg-rose/10 px-3 py-1 text-xs font-medium capitalize text-rose-deep">{order.status}</span></div>
                   <p className="mt-4 text-sm">{(order.items || []).map((item) => `${item.name} × ${item.quantity}`).join(', ')}</p>
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4"><p className="text-sm">Total <strong>৳{Number(order.total || 0).toLocaleString('en-BD')}</strong> · {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}</p><Link to={`/track?id=${encodeURIComponent(order.orderNumber || '')}&phone=${encodeURIComponent(order.address?.phone || '')}`} className="rounded-full bg-rose px-4 py-2 text-xs font-medium text-white">Track order</Link></div>
+                  <div className="flex flex-wrap gap-2"><button type="button" hidden={order.status !== 'pending'} onClick={() => cancelOrder(order)} className="rounded-full border border-line px-4 py-2 text-xs hover:border-rose">Cancel order</button><Link to={`/track?id=${encodeURIComponent(order.orderNumber || '')}`} className="rounded-full bg-rose px-4 py-2 text-xs font-medium text-white">Track order</Link></div>
                 </article>)}</div>}
               </section>
             )}
@@ -560,7 +569,7 @@ export default function CustomerAccountPage() {
               <section className="py-8 text-center">
                 <h2 className="font-serif text-3xl">Track your order</h2>
                 <p className="mt-2 text-sm text-ink-soft">
-                  Enter your order ID from the confirmation SMS.
+                  Enter your order number from Order History.
                 </p>
                 <form
                   onSubmit={trackFromProfile}

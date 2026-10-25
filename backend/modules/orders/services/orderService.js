@@ -6,10 +6,11 @@ import User from "../../../models/User.js";
 import AppError from "../../../utils/AppError.js";
 import { validateCouponForOrder, redeemCoupon } from "../../coupons/services/couponService.js";
 
-const deliveryFee = (subtotal, city) => subtotal >= 3000 || subtotal === 0 ? 0 : city?.trim().toLowerCase() === "chattogram" ? 60 : 120;
+const deliveryFee = (subtotal, city) => subtotal >= 3000 || subtotal === 0 ? 0 : ["chattogram", "chittagong"].includes(city?.trim().toLowerCase()) ? 60 : 120;
 const ORDER_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const dhakaDay = (date) => date.toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }).slice(2).replaceAll("-", "");
 export const makeOrderNumber = (date = new Date()) => {
-  const day = date.toISOString().slice(2, 10).replaceAll("-", "");
+  const day = dhakaDay(date);
   let code = "";
   for (let i = 0; i < 6; i += 1) code += ORDER_CODE_CHARS[Math.floor(Math.random() * ORDER_CODE_CHARS.length)];
   return `MMP-${day}-${code}`;
@@ -20,7 +21,7 @@ const legacyOrderNumber = (order) => {
 };
 export async function createOrder(customerId, input) {
   if (!Array.isArray(input.items) || input.items.length === 0 || input.items.length > 50) throw new AppError("Add at least one item to your order.", 400);
-  if (!input.address || typeof input.address.addressLine !== "string" || !input.address.addressLine.trim() || !input.address.phone?.trim()) throw new AppError("A delivery address and phone number are required.", 400);
+  if (!input.address || typeof input.address.addressLine !== "string" || !input.address.addressLine.trim() || !input.address.phone?.trim() || !input.address.recipientName?.trim()) throw new AppError("A recipient name, delivery address and phone number are required.", 400);
   if (input.paymentMethod !== "cod") throw new AppError("Online payments are not configured yet. Choose Cash on Delivery.", 400);
   const quantities = new Map();
   for (const item of input.items) {
@@ -68,11 +69,6 @@ export async function getMyOrders(customerId) {
   const orders = await Order.find({ customer: customerId }).sort({ createdAt: -1 }).lean();
   return orders.map((order) => ({ ...order, messageCount: order.messages?.length || 0, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
 }
-export async function trackOrder(orderNumber, phone) {
-  const order = await Order.findOne({ orderNumber: orderNumber.trim().toUpperCase(), "address.phone": phone.trim() }).select("orderNumber status total createdAt").lean();
-  if (!order) throw new AppError("Order not found. Check the tracking number and checkout phone number.", 404);
-  return order;
-}
 export async function getMyOrder(customerId, id) {
   const order = await Order.findOne({ _id: id, customer: customerId }).lean();
   if (!order) throw new AppError("Order not found.", 404);
@@ -83,18 +79,20 @@ export async function getAllOrders() {
   return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order), unreadForAdmin: unreadCount(order, "admin"), unreadForPartner: unreadCount(order, "deliveryPartner") }));
 }
 export async function updateOrderStatus(id, status) {
-    const allowed = ["confirmed", "cancelled"];
+  const allowed = ["confirmed", "cancelled"];
   if (!allowed.includes(status)) throw new AppError(`Status must be one of: ${allowed.join(", ")}.`, 400);
-  const order = await Order.findById(id);
+  const order = await Order.findById(id).select("status paymentStatus");
   if (!order) throw new AppError("Order not found.", 404);
   if (["cancelled", "delivered"].includes(order.status)) throw new AppError("This order can no longer change status.", 409);
-  if (status === "confirmed" && order.status !== "pending") throw new AppError("Only pending orders can be confirmed.", 409);
-  if (status === "cancelled") {
-    for (const item of order.items) await Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } });
-    if (order.couponCode) await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } });
+  if (status === "confirmed") {
+    const confirmed = await Order.findOneAndUpdate({ _id: id, status: "pending" }, { $set: { status: "confirmed" } }, { new: true });
+    if (!confirmed) throw new AppError("Only pending orders can be confirmed.", 409);
+    return confirmed;
   }
-  order.status = status;
-  return order.save();
+  if (order.paymentStatus === "paid") throw new AppError("Cash was already collected for this order, so it cannot be cancelled.", 409);
+  const cancelled = await cancelOrder({ _id: id }, ["pending", "confirmed", "shipped", "outForDelivery"]);
+  if (!cancelled) throw new AppError("This order can no longer be cancelled.", 409);
+  return cancelled;
 }
 export async function assignDeliveryPartner(orderId, userId) {
   if (!/^[\da-f]{24}$/i.test(userId || "")) throw new AppError("A valid delivery partner id is required.", 400);
@@ -152,6 +150,7 @@ export async function updateDeliveryStatus(partnerId, orderId, status) {
   const order = await Order.findOne({ _id: orderId, deliveryPartner: partnerId });
   if (!order) throw new AppError("Delivery assignment not found.", 404);
   if (!next[order.status] || next[order.status] !== status) throw new AppError("This status change is not allowed for the current delivery stage.", 409);
+  if (status === "delivered" && order.paymentMethod === "cod" && order.paymentStatus !== "paid") throw new AppError("Collect the cash before marking this order delivered.", 409);
   order.status = status;
   return order.save();
 }
@@ -168,4 +167,25 @@ function unreadCount(order, viewerRole) {
 }
 export async function hasDeliveredOrderWithProduct(customerId, productId) {
   return Boolean(await Order.exists({ customer: customerId, status: "delivered", "items.product": productId }));
+}
+// Gives stock (and the coupon use) back for a cancelled order. Used by both cancel paths.
+async function restoreReservedStock(order) {
+  await Product.bulkWrite(order.items.map((item) => ({ updateOne: { filter: { _id: item.product }, update: { $inc: { stock: item.quantity } } } })));
+  if (order.couponCode) await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } });
+}
+
+// Cancels only if the order is STILL in an allowed status and unpaid.
+// Check and change happen in one database step, so a double click cannot restore stock twice.
+// Returns null if someone else changed the order first.
+async function cancelOrder(filter, allowedStatuses) {
+  const order = await Order.findOneAndUpdate({ ...filter, status: { $in: allowedStatuses }, paymentStatus: { $ne: "paid" } }, { $set: { status: "cancelled" } }, { new: true });
+  if (order) await restoreReservedStock(order);
+  return order;
+}
+
+export async function cancelMyOrder(customerId, orderId) {
+  if (!/^[\da-f]{24}$/i.test(orderId || "")) throw new AppError("Order not found.", 404);
+  const order = await cancelOrder({ _id: orderId, customer: customerId }, ["pending"]);
+  if (!order) throw new AppError("Only orders that are still pending can be cancelled here. Please contact the shop for confirmed orders.", 409);
+  return order;
 }

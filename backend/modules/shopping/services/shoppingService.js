@@ -11,7 +11,7 @@ async function availableProduct(productId) {
   return product;
 }
 export async function getCart(customer) {
-  const cart = await Cart.findOne({ customer }).populate("items.product", "name price images stock active").lean();
+  const cart = await Cart.findOne({ customer }).populate("items.product", "name slug brand category type price compareAt images stock active").lean();
   return cart || { items: [] };
 }
 export async function addCartItem(customer, { productId, quantity = 1 }) {
@@ -46,7 +46,7 @@ export async function clearCart(customer) {
   return { items: [] };
 }
 export async function getWishlist(customer) {
-  const wishlist = await Wishlist.findOne({ customer }).populate("products", "name price images stock active").lean();
+  const wishlist = await Wishlist.findOne({ customer }).populate("products", "name slug brand category type price compareAt images stock active").lean();
   return wishlist || { products: [] };
 }
 export async function addWishlistItem(customer, productId) {
