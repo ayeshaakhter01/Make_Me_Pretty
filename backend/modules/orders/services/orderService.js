@@ -69,11 +69,6 @@ export async function getMyOrders(customerId) {
   const orders = await Order.find({ customer: customerId }).sort({ createdAt: -1 }).lean();
   return orders.map((order) => ({ ...order, messageCount: order.messages?.length || 0, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
 }
-export async function trackOrder(orderNumber, phone) {
-  const order = await Order.findOne({ orderNumber: orderNumber.trim().toUpperCase(), "address.phone": phone.trim() }).select("orderNumber status total createdAt").lean();
-  if (!order) throw new AppError("Order not found. Check the tracking number and checkout phone number.", 404);
-  return order;
-}
 export async function getMyOrder(customerId, id) {
   const order = await Order.findOne({ _id: id, customer: customerId }).lean();
   if (!order) throw new AppError("Order not found.", 404);
@@ -84,18 +79,20 @@ export async function getAllOrders() {
   return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order), unreadForAdmin: unreadCount(order, "admin"), unreadForPartner: unreadCount(order, "deliveryPartner") }));
 }
 export async function updateOrderStatus(id, status) {
-    const allowed = ["confirmed", "cancelled"];
+  const allowed = ["confirmed", "cancelled"];
   if (!allowed.includes(status)) throw new AppError(`Status must be one of: ${allowed.join(", ")}.`, 400);
-  const order = await Order.findById(id);
+  const order = await Order.findById(id).select("status paymentStatus");
   if (!order) throw new AppError("Order not found.", 404);
   if (["cancelled", "delivered"].includes(order.status)) throw new AppError("This order can no longer change status.", 409);
-  if (status === "confirmed" && order.status !== "pending") throw new AppError("Only pending orders can be confirmed.", 409);
-  if (status === "cancelled") {
-    for (const item of order.items) await Product.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } });
-    if (order.couponCode) await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } });
+  if (status === "confirmed") {
+    const confirmed = await Order.findOneAndUpdate({ _id: id, status: "pending" }, { $set: { status: "confirmed" } }, { new: true });
+    if (!confirmed) throw new AppError("Only pending orders can be confirmed.", 409);
+    return confirmed;
   }
-  order.status = status;
-  return order.save();
+  if (order.paymentStatus === "paid") throw new AppError("Cash was already collected for this order, so it cannot be cancelled.", 409);
+  const cancelled = await cancelOrder({ _id: id }, ["pending", "confirmed", "shipped", "outForDelivery"]);
+  if (!cancelled) throw new AppError("This order can no longer be cancelled.", 409);
+  return cancelled;
 }
 export async function assignDeliveryPartner(orderId, userId) {
   if (!/^[\da-f]{24}$/i.test(userId || "")) throw new AppError("A valid delivery partner id is required.", 400);
@@ -170,4 +167,25 @@ function unreadCount(order, viewerRole) {
 }
 export async function hasDeliveredOrderWithProduct(customerId, productId) {
   return Boolean(await Order.exists({ customer: customerId, status: "delivered", "items.product": productId }));
+}
+// Gives stock (and the coupon use) back for a cancelled order. Used by both cancel paths.
+async function restoreReservedStock(order) {
+  await Product.bulkWrite(order.items.map((item) => ({ updateOne: { filter: { _id: item.product }, update: { $inc: { stock: item.quantity } } } })));
+  if (order.couponCode) await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } });
+}
+
+// Cancels only if the order is STILL in an allowed status and unpaid.
+// Check and change happen in one database step, so a double click cannot restore stock twice.
+// Returns null if someone else changed the order first.
+async function cancelOrder(filter, allowedStatuses) {
+  const order = await Order.findOneAndUpdate({ ...filter, status: { $in: allowedStatuses }, paymentStatus: { $ne: "paid" } }, { $set: { status: "cancelled" } }, { new: true });
+  if (order) await restoreReservedStock(order);
+  return order;
+}
+
+export async function cancelMyOrder(customerId, orderId) {
+  if (!/^[\da-f]{24}$/i.test(orderId || "")) throw new AppError("Order not found.", 404);
+  const order = await cancelOrder({ _id: orderId, customer: customerId }, ["pending"]);
+  if (!order) throw new AppError("Only orders that are still pending can be cancelled here. Please contact the shop for confirmed orders.", 409);
+  return order;
 }
