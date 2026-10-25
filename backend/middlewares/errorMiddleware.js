@@ -1,6 +1,18 @@
 
 const errorMiddleware = (err, req, res, next) => {
-  console.error(err);
+  // Do not serialize request bodies, provider responses, or arbitrary error
+  // messages into logs; payment callbacks can contain sensitive data.
+  const diagnosticFrames = process.env.NODE_ENV === "production" || typeof err?.stack !== "string"
+    ? undefined
+    : err.stack.split("\n").slice(1, 4).map((frame) => frame.trim());
+  console.error("API request failed", {
+    name: typeof err?.name === "string" ? err.name : "Error",
+    code: typeof err?.code === "number" || typeof err?.code === "string" ? err.code : undefined,
+    statusCode: Number.isInteger(err?.statusCode) ? err.statusCode : 500,
+    method: req.method,
+    path: req.path,
+    ...(diagnosticFrames?.length ? { stack: diagnosticFrames } : {}),
+  });
 
   if (err.code === 11000) {
     return res.status(409).json({

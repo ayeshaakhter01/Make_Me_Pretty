@@ -7,6 +7,7 @@ const ShopPage = lazy(() => import('./pages/ShopPage.jsx'))
 const ProductPage = lazy(() => import('./pages/ProductPage.jsx'))
 const CartPage = lazy(() => import('./pages/CartPage.jsx'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'))
+const PaymentResultPage = lazy(() => import('./pages/PaymentResultPage.jsx'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'))
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage.jsx'))
 const ContentPage = lazy(() => import('./pages/ContentPage.jsx'))
@@ -15,6 +16,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage.jsx'))
 const ComboPage = lazy(() => import('./pages/ComboPage.jsx'))
 const TrackPage = lazy(() => import('./pages/TrackPage.jsx'))
 const AccountPage = lazy(() => import('./pages/AccountPage.jsx'))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.jsx'))
 const AdminApp = lazy(() => import('./pages/admin/AdminApp.jsx'))
 const SkinAdvisorPage = lazy(() => import('./pages/SkinAdvisorPage.jsx'))
 const CustomerAccountPage = lazy(() =>  import('./pages/CustomerAccountPage.jsx'))
@@ -60,10 +62,12 @@ export default function App() {
           <Route path="track" element={<TrackPage />} />
           <Route path="skin-advisor" element={<SkinAdvisorPage />} />
           <Route path="account" element={<AccountPage />} />
+          <Route path="verify-email" element={<VerifyEmailPage />} />
           <Route path="account/profile" element={<CustomerAccountPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="payment-result" element={<PaymentResultPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

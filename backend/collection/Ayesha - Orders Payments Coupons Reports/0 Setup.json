@@ -1,31 +1,5 @@
 {
-  "info": {
-    "name": "Make Me Pretty API",
-    "description": "Smoke test the API with local MongoDB. Set baseUrl, then run Health and Register/Login before authenticated requests. Register creates a customer; use admin:create to provision an admin and log in to test admin routes.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:5000"
-    },
-    {
-      "key": "token",
-      "value": ""
-    },
-    {
-      "key": "productId",
-      "value": ""
-    },
-    {
-      "key": "orderNumber",
-      "value": ""
-    },
-    {
-      "key": "orderPhone",
-      "value": "01700000000"
-    }
-  ],
+  "name": "0 Setup",
   "item": [
     {
       "name": "Health",
@@ -57,7 +31,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"customer@example.com\",\n  \"password\": \"ChangeThisPassword123!\"\n}"
+          "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
         },
         "url": "{{baseUrl}}/api/auth/register"
       },
@@ -84,7 +58,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"customer@example.com\",\n  \"password\": \"ChangeThisPassword123!\"\n}"
+          "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
         },
         "url": "{{baseUrl}}/api/auth/login"
       },
@@ -93,8 +67,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Login succeeds', () => pm.response.to.have.status(200));",
-              "pm.collectionVariables.set('token', pm.response.json().data.token);"
+              "pm.test('Customer login succeeds', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { pm.environment.set('customerToken', pm.response.json().data.token); }"
             ]
           }
         }
@@ -107,7 +81,7 @@
         "header": [
           {
             "key": "Authorization",
-            "value": "Bearer {{token}}"
+            "value": "Bearer {{customerToken}}"
           }
         ],
         "url": "{{baseUrl}}/api/auth/me"
@@ -134,7 +108,8 @@
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test('Catalog endpoint returns success', () => pm.response.to.have.status(200));"
+              "pm.test('Catalog endpoint returns success', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) { const page = pm.response.json().data; pm.test('Product listing has the documented response shape', () => pm.expect(page.data).to.be.an('array')); const product = page.data?.find((item) => Number(item.stock) > 0); if (product && !pm.environment.get('productId')) pm.environment.set('productId', product._id); }"
             ]
           }
         }
@@ -147,7 +122,7 @@
         "header": [
           {
             "key": "Authorization",
-            "value": "Bearer {{token}}"
+            "value": "Bearer {{customerToken}}"
           },
           {
             "key": "Content-Type",
@@ -162,99 +137,73 @@
       }
     },
     {
-      "name": "Create COD order",
+      "name": "Login admin",
       "request": {
         "method": "POST",
         "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
-          },
           {
             "key": "Content-Type",
             "value": "application/json"
           }
         ],
+        "url": "{{baseUrl}}/api/auth/login",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"items\": [{ \"productId\": \"{{productId}}\", \"quantity\": 1 }],\n  \"address\": { \"recipientName\": \"Demo Customer\", \"phone\": \"{{orderPhone}}\", \"addressLine\": \"House 1, Road 1\", \"area\": \"Dhanmondi\", \"city\": \"Dhaka\" },\n  \"paymentMethod\": \"cod\"\n}"
-        },
-        "url": "{{baseUrl}}/api/orders"
+          "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
       },
       "event": [
         {
           "listen": "test",
           "script": {
+            "type": "text/javascript",
             "exec": [
-              "pm.test('COD order is created', () => pm.response.to.have.status(201));",
-              "if (pm.response.code === 201) pm.collectionVariables.set('orderNumber', pm.response.json().data.orderNumber);"
+              "pm.test('Admin credentials authenticate', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) pm.environment.set('adminToken', pm.response.json().data.token);"
             ]
           }
         }
       ]
     },
     {
-      "name": "Own orders",
+      "name": "Login delivery partner",
       "request": {
-        "method": "GET",
+        "method": "POST",
         "header": [
           {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
+            "key": "Content-Type",
+            "value": "application/json"
           }
         ],
-        "url": "{{baseUrl}}/api/orders/my"
-      }
-    },
-    {
-      "name": "Admin banners (admin token required)",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer {{token}}"
+        "url": "{{baseUrl}}/api/auth/login",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{deliveryEmail}}\",\n  \"password\": \"{{deliveryPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
           }
-        ],
-        "url": "{{baseUrl}}/api/banners/admin/all"
-      }
-    },
-    {
-      "name": "Public blogs",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/blogs"
-      }
-    },
-    {
-      "name": "Invalid token is rejected",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Authorization",
-            "value": "Bearer invalid"
-          }
-        ],
-        "url": "{{baseUrl}}/api/orders/my"
+        }
       },
       "event": [
         {
           "listen": "test",
           "script": {
+            "type": "text/javascript",
             "exec": [
-              "pm.test('Invalid token returns 401', () => pm.response.to.have.status(401));"
+              "pm.test('Delivery partner credentials authenticate', () => pm.response.to.have.status(200));",
+              "if (pm.response.code === 200) pm.environment.set('deliveryPartnerToken', pm.response.json().data.token);"
             ]
           }
         }
       ]
-    },
-    {
-      "name": "Track order",
-      "request": {
-        "method": "GET",
-        "url": "{{baseUrl}}/api/orders/track/{{orderNumber}}?phone={{orderPhone}}"
-      }
     }
-  ]
+  ],
+  "collectionVariables": []
 }

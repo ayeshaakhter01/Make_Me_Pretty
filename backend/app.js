@@ -20,6 +20,8 @@ import skinAdvisorRoutes from "./modules/skinAdvisor/routes/skinAdvisorRoutes.js
 import reportRoutes from "./modules/reports/routes/reportRoutes.js";
 import deliveryRoutes from "./modules/delivery/routes/deliveryRoutes.js";
 import siteSettingsRoutes from "./modules/siteSettings/routes/siteSettingsRoutes.js";
+import paymentRoutes from "./modules/payments/routes/paymentRoutes.js";
+import { contactMessageRoutes, adminContactMessageRoutes } from "./modules/contactMessages/routes/contactMessageRoutes.js";
 import errorMiddleware from "./middlewares/errorMiddleware.js";
 import policyRoutes from "./modules/policies/routes/policyRoutes.js";
 
@@ -27,10 +29,23 @@ const app = express();
 
 const allowedOrigins = (process.env.CLIENT_ORIGINS || "http://localhost:5173,http://127.0.0.1:5173")
   .split(",").map((origin) => origin.trim()).filter(Boolean);
-app.use(cors({ origin(origin, callback) {
+const apiCors = cors({ origin(origin, callback) {
   if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
   return callback(new Error("Origin is not allowed by CORS"));
-}, methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization"] }));
+}, methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"], allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"] });
+const sslCommerzCallbackPaths = new Set([
+  "/api/payments/sslcommerz/success",
+  "/api/payments/sslcommerz/fail",
+  "/api/payments/sslcommerz/cancel",
+  "/api/payments/sslcommerz/ipn",
+]);
+app.use((req, res, next) => {
+  // SSLCommerz sends cross-origin form POSTs to these public callbacks.
+  // CORS is not authentication; the callback handlers still require backend
+  // transaction validation before changing payment state.
+  if (req.method === "POST" && sslCommerzCallbackPaths.has(req.path)) return next();
+  return apiCors(req, res, next);
+});
 app.use(express.json());
 
 const backendDir = path.dirname(fileURLToPath(import.meta.url));
@@ -41,12 +56,15 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/brands", brandRoutes);
 app.use("/api/policies", policyRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
 app.use("/api/delivery", deliveryRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/products", productReviewRoutes);
 app.use("/api/admin/reviews", adminReviewRoutes);
 app.use("/api/reviews", publicReviewRoutes);
+app.use("/api/contact-messages", contactMessageRoutes);
+app.use("/api/admin/contact-messages", adminContactMessageRoutes);
 app.use("/api/admin/reports", requireAuth, requireRole("admin"), reportRoutes);
 app.use("/api/skin-advisor", skinAdvisorRoutes);
 app.use("/api/site-settings", siteSettingsRoutes);

@@ -12,12 +12,27 @@ export const DEFAULT_FOOTER = {
     { name: "LinkedIn", href: "https://www.linkedin.com/in/make-me-pretty-773652376", active: true },
   ],
   payments: [
-    { id: "pay-bkash", label: "bKash", src: "/images/payments/bkash.svg" },
-    { id: "pay-visa", label: "Visa", src: "/images/payments/visa.png" },
-    { id: "pay-cod", label: "Cash on Delivery", src: "/images/payments/cod.png" },
+    { id: "pay-bkash", label: "bKash", src: "/uploads/payment-logos/bkash.svg" },
+    { id: "pay-visa", label: "Visa", src: "/uploads/payment-logos/visa.png" },
+    { id: "pay-cod", label: "Cash on Delivery", src: "/uploads/payment-logos/cod.png" },
   ],
 };
+const DEFAULT_FOUNDER_STORY = "As the Founder of Make Me Pretty, my vision has always been simple — to make authentic skincare accessible and trustworthy for everyone. What started as a small dream in June 2021 has grown with the love and trust of our customers. Every order we send carries care, honesty, and gratitude. Thank you for being part of our journey 💜";
+export const DEFAULT_ABOUT = [
+  { id: "about-ayesha", name: "Ayesha Akhter", text: DEFAULT_FOUNDER_STORY, image: "" },
+  { id: "about-sadman", name: "MD Sadman Hasan", text: DEFAULT_FOUNDER_STORY, image: "" },
+];
+export const DEFAULT_CONTACT = {
+  title: "Contact Us",
+  subtitle: "Questions about an order or a product? We’d love to hear from you.",
+  introTitle: "Let’s connect!",
+  introText: "Whether it’s about an order, a product, or your skin’s next favourite ritual — call us, WhatsApp us, or drop a note here. We reply within a day.",
+  phone: "01644611916",
+  whatsapp: "01622736644",
+  address: "Block-G, Halishahar, Chittagong",
+};
 const validMedia = (value) => typeof value === "string" && (/^https:\/\//i.test(value) || value.startsWith("/uploads/") || value.startsWith("/images/"));
+const normalizePaymentImagePath = (src) => src.replace(/^\/images\/payments\//, "/uploads/payment-logos/");
 const cleanLinks = (list, label) => {
   if (!Array.isArray(list) || list.length > 30) throw new AppError(`${label} must be a list of up to 30 entries.`, 400);
   return list.map((item) => {
@@ -36,7 +51,7 @@ function cleanFooter(footer) {
   return {
     helpLinks: cleanLinks(footer.helpLinks ?? [], "Help links"),
     socials: socials.map((item) => ({ name: item.name.slice(0, 40), href: item.href.slice(0, 500), active: item.active !== false })),
-    payments: payments.map((item) => ({ id: String(item.id || item.label).slice(0, 80), label: item.label.trim().slice(0, 80), src: item.src })),
+    payments: payments.map((item) => ({ id: String(item.id || item.label).slice(0, 80), label: item.label.trim().slice(0, 80), src: normalizePaymentImagePath(item.src) })),
   };
 }
 // The footer's "Customer policy" column is built from the published policies in the database.
@@ -45,10 +60,41 @@ async function withPolicyLinks(footer) {
   const { policyPages, ...rest } = footer || {};
   return { ...rest, policyLinks: policies.map((policy) => ({ id: String(policy._id), label: policy.title, href: `/p/${policy.slug}` })) };
 }
+function cleanAbout(about) {
+  if (!Array.isArray(about) || about.length > 20) throw new AppError("About page sections must be a list of up to 20 entries.", 400);
+  return about.map((item) => {
+    if (!item || typeof item.name !== "string" || !item.name.trim() || typeof item.text !== "string" || typeof item.image !== "string") {
+      throw new AppError("About page sections need a title, text, and image path.", 400);
+    }
+    if (item.image && !validMedia(item.image)) throw new AppError("About page images must be HTTPS or uploaded image paths.", 400);
+    if (item.name.length > 100 || item.text.length > 5000) throw new AppError("About page title or text is too long.", 400);
+    return { id: String(item.id || item.name).slice(0, 80), name: item.name.trim(), text: item.text.trim(), image: item.image };
+  });
+}
+function cleanContact(contact) {
+  const fields = Object.keys(DEFAULT_CONTACT);
+  if (!contact || typeof contact !== "object" || Array.isArray(contact) || fields.some((field) => typeof contact[field] !== "string")) {
+    throw new AppError("Contact settings must include valid text fields.", 400);
+  }
+  if (fields.some((field) => contact[field].length > (field.endsWith("Text") || field === "subtitle" ? 1000 : 300))) {
+    throw new AppError("Contact text is too long.", 400);
+  }
+  for (const field of ["phone", "whatsapp"]) {
+    if (contact[field] && !/^[0-9+()\s-]{7,30}$/.test(contact[field])) throw new AppError("Contact phone numbers have an invalid format.", 400);
+  }
+  return Object.fromEntries(fields.map((field) => [field, contact[field].trim()]));
+}
 export async function getStoreSettings() {
-  let saved = await StoreSettings.findOne({ key: "storefront" }).lean();
-  if (!saved) saved = (await StoreSettings.create({ key: "storefront", logo: "", footer: DEFAULT_FOOTER })).toObject();
-  return { logo: saved.logo || "", footer: await withPolicyLinks(saved.footer || DEFAULT_FOOTER) };
+  const saved = await StoreSettings.findOne({ key: "storefront" }).lean();
+  const storedFooter = saved?.footer || DEFAULT_FOOTER;
+  const footer = await withPolicyLinks({
+    ...storedFooter,
+    payments: (Array.isArray(storedFooter.payments) ? storedFooter.payments : []).map((payment) => ({
+      ...payment,
+      src: typeof payment.src === "string" ? normalizePaymentImagePath(payment.src) : payment.src,
+    })),
+  });
+  return { logo: saved?.logo || "", footer, about: saved?.about ?? DEFAULT_ABOUT, contact: saved?.contact ?? DEFAULT_CONTACT };
 }
 export async function updateStoreSettings(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new AppError("Settings payload must be an object.", 400);
@@ -58,7 +104,9 @@ export async function updateStoreSettings(input) {
     update.logo = input.logo;
   }
   if (Object.hasOwn(input, "footer")) update.footer = cleanFooter(input.footer);
+  if (Object.hasOwn(input, "about")) update.about = cleanAbout(input.about);
+  if (Object.hasOwn(input, "contact")) update.contact = cleanContact(input.contact);
   if (!Object.keys(update).length) throw new AppError("No supported settings were provided.", 400);
   const saved = await StoreSettings.findOneAndUpdate({ key: "storefront" }, { $set: update, $setOnInsert: { key: "storefront" } }, { returnDocument: "after", upsert: true, runValidators: true }).lean();
-  return { logo: saved.logo || "", footer: await withPolicyLinks(saved.footer || DEFAULT_FOOTER) };
+  return { logo: saved.logo || "", footer: await withPolicyLinks(saved.footer || DEFAULT_FOOTER), about: saved.about ?? DEFAULT_ABOUT, contact: saved.contact ?? DEFAULT_CONTACT };
 }

@@ -9,7 +9,7 @@ import {
 
 // What a customer sends. customer and customerName come from the login token,
 // and status is always "pending", so they are NOT accepted here.
-const SUBMISSION_FIELDS = ["product", "rating", "title", "text", "image"];
+const SUBMISSION_FIELDS = ["product", "rating", "title", "text", "image", "images"];
 
 export const validateReviewSubmission = (reviewData) => {
   const errors = [];
@@ -54,6 +54,23 @@ export const validateReviewSubmission = (reviewData) => {
   if (reviewData.image !== undefined && reviewData.image !== "") {
     const imageError = getImageSourceError(reviewData.image, "Image");
     if (imageError) errors.push(imageError);
+    // Customers can only attach a photo that was uploaded through this site.
+    else if (!reviewData.image.trim().startsWith("/uploads/")) errors.push("Photo must be uploaded through the review form");
+  }
+
+  // Up to 3 photos, each uploaded through this site.
+  if (reviewData.images !== undefined) {
+    if (!Array.isArray(reviewData.images)) {
+      errors.push("images must be a list");
+    } else if (reviewData.images.length > 3) {
+      errors.push("You can add up to 3 photos");
+    } else {
+      reviewData.images.forEach((photo, index) => {
+        const photoError = getImageSourceError(photo, `Photo ${index + 1}`);
+        if (photoError) errors.push(photoError);
+        else if (!photo.trim().startsWith("/uploads/")) errors.push(`Photo ${index + 1} must be uploaded through the review form`);
+      });
+    }
   }
 
   return { isValid: errors.length === 0, errors };

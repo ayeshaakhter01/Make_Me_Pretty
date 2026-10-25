@@ -1,12 +1,12 @@
 import * as service from "../services/orderService.js";
 const respond = (fn, status = 200) => async (req, res, next) => { try { const data = await fn(req); res.status(status).json({ success: true, data }); } catch (error) { next(error); } };
-export const createOrder = respond((req) => service.createOrder(req.user._id, req.body), 201);
+export const createOrder = respond((req) => service.createOrder(req.user._id, req.body, req.get("Idempotency-Key")), 201);
 export const myOrders = respond((req) => service.getMyOrders(req.user._id));
 export const myOrder = respond((req) => service.getMyOrder(req.user._id, req.params.id));
 export const allOrders = respond(() => service.getAllOrders());
 export const setOrderStatus = respond((req) => service.updateOrderStatus(req.params.id, req.body.status));
 export const assignDelivery = respond((req) => service.assignDeliveryPartner(req.params.id, req.body.deliveryPartnerId));
-export const trackPublicOrder = respond((req) => service.trackOrder(req.params.orderNumber, req.query.phone || ""));
 export const getOrderMessages = respond((req) => service.listOrderMessages(req.user, req.params.id));
 export const postOrderMessage = respond((req) => service.createOrderMessage(req.user, req.params.id, req.body), 201);
 export const resolveOrderIssue = respond((req) => service.resolveOrderIssue(req.params.id));
+export const cancelMine = respond((req) => service.cancelMyOrder(req.user._id, req.params.id));

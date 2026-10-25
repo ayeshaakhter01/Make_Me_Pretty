@@ -21,13 +21,25 @@ Create products in the admin inventory screen using product details and images v
 
 Image uploads are stored under `backend/uploads` on the server. Back up that folder and use persistent storage if deploying to a host with ephemeral disks. Admin APIs require a valid JWT and the `admin` role. Delivery endpoints require a `deliveryPartner` role.
 
-Orders currently support Cash on Delivery. The server calculates prices, delivery fees, coupon discounts, stock changes, and order snapshots. Card/bKash checkout needs a merchant account, provider credentials, callback URLs, and a verified payment flow before it can be enabled. The skin advisor uses catalog rules unless `OPENAI_API_KEY` is configured; keep provider keys on the backend only.
+The checkout supports Cash on Delivery and SSLCommerz hosted checkout in sandbox mode. The server calculates prices, delivery fees, coupon discounts, stock changes, and order snapshots. SSLCommerz credentials stay in the backend environment; the implementation is pinned to sandbox endpoints and does not enable live payments.
+
+### SSLCommerz sandbox setup
+
+1. Create sandbox merchant credentials from the [SSLCommerz Sandbox Payment System](https://developer.sslcommerz.com/registration/).
+2. Copy `backend/.env.example` to `.env`. Set `SSLCOMMERZ_STORE_ID` and `SSLCOMMERZ_STORE_PASSWORD` to sandbox credentials. Never put these values in `frontend/.env` or a `VITE_` variable.
+3. Set `CLIENT_URL` to the storefront URL. Set `API_PUBLIC_URL` to the backend's public HTTPS URL. SSLCommerz must be able to POST to the success, fail, cancel, and IPN callbacks, so localhost is not usable for completed callback testing; use an HTTPS tunnel during local testing.
+4. Add the `API_PUBLIC_URL` origin to `CLIENT_ORIGINS`, restart the backend, and confirm `GET /api/payments/config` returns `sslCommerzEnabled: true`.
+5. In the SSLCommerz sandbox merchant panel, configure the IPN URL shown by `API_PUBLIC_URL` as `/api/payments/sslcommerz/ipn`. Place a checkout selecting **Card / Mobile Banking**, then complete the hosted sandbox flow. The result page reads the order's authenticated server status; it does not trust the return URL.
+
+The backend uses SSLCommerz's hosted-session and validation REST endpoints with Node's server-side `fetch`, and redirects to the returned `GatewayPageURL`. Its return and IPN handlers query SSLCommerz and compare transaction ID, amount, and BDT currency before marking an attempt paid. See [API_CONTRACT.md](API_CONTRACT.md) for endpoints and state handling. For provider integration details, use the [official hosted payment and validation documentation](https://developer.sslcommerz.com/doc/v4/index.html).
+
+The skin advisor uses catalog rules unless `OPENAI_API_KEY` is configured; keep provider keys on the backend only.
 
 ## API map
 
 - `/api/auth`, `/api/users`: registration, login, profile, and addresses
 - `/api/products`, `/api/categories`, `/api/brands`: catalog; `/api/products/:id/reviews`: reviews
-- `/api/cart`, `/api/wishlist`, `/api/orders`: customer shopping and orders
+- `/api/cart`, `/api/wishlist`, `/api/orders`, `/api/payments`: customer shopping, orders, and sandbox hosted checkout
 - `/api/admin/*`: protected catalog, users, promotions, reviews, and reports
 - `/api/banners`, `/api/blogs`, `/api/coupons`: public reads and protected admin writes
 - `/api/uploads/images`: authenticated image upload

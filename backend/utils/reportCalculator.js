@@ -1,8 +1,6 @@
-// Pure report logic. It works on an array of order objects, so it can be tested
-// now with sample data. Later the service loads real orders from MongoDB and
-// passes them in.
+// Pure report logic over the order fields selected by the reports service.
 //
-// Expected order shape (PROPOSED - agree the exact names with Fayeza):
+// Order shape:
 // {
 //   status: "pending" | "confirmed" | "shipped" | "outForDelivery" | "delivered" | "cancelled",
 //   paymentMethod: "cod" | "bkash" | ...,
@@ -40,11 +38,17 @@ export const toDateKey = (dateInput) => {
   return date.toLocaleDateString("en-CA", { timeZone: REPORT_TIME_ZONE });
 };
 
+export const toMonthKey = (dateInput) => {
+  const date = toDateKey(dateInput);
+  return date ? date.slice(0, 7) : null;
+};
+
 export const summarizeOrders = (orders) => {
   const list = toOrderList(orders);
 
   let cancelledOrders = 0;
   let receivedRevenue = 0;
+  let receivedOrderCount = 0;
   let pendingPaymentAmount = 0;
 
   for (const order of list) {
@@ -52,6 +56,7 @@ export const summarizeOrders = (orders) => {
       cancelledOrders += 1;
     } else if (isPaid(order)) {
       receivedRevenue += toAmount(order.total);
+      receivedOrderCount += 1;
     } else {
       pendingPaymentAmount += toAmount(order.total);
     }
@@ -62,9 +67,16 @@ export const summarizeOrders = (orders) => {
     cancelledOrders,
     activeOrders: list.length - cancelledOrders,
     receivedRevenue: roundMoney(receivedRevenue),
+    receivedOrderCount,
+    averageReceivedOrderValue: receivedOrderCount
+      ? roundMoney(receivedRevenue / receivedOrderCount)
+      : 0,
     pendingPaymentAmount: roundMoney(pendingPaymentAmount),
   };
 };
+
+export const receivedRevenueOrders = (orders) =>
+  toOrderList(orders).filter(isReceivedRevenue);
 
 export const orderStatusBreakdown = (orders) => {
   const breakdown = {};
@@ -96,6 +108,27 @@ export const salesByDate = (orders) => {
   return [...days.values()]
     .map((day) => ({ ...day, revenue: roundMoney(day.revenue) }))
     .sort((a, b) => a.date.localeCompare(b.date));
+};
+
+// Received revenue per month, oldest month first, using Bangladesh dates.
+export const salesByMonth = (orders) => {
+  const months = new Map();
+
+  for (const order of toOrderList(orders)) {
+    if (!isReceivedRevenue(order)) continue;
+
+    const month = toMonthKey(order.createdAt);
+    if (!month) continue;
+
+    const entry = months.get(month) ?? { month, orders: 0, revenue: 0 };
+    entry.orders += 1;
+    entry.revenue += toAmount(order.total);
+    months.set(month, entry);
+  }
+
+  return [...months.values()]
+    .map((entry) => ({ ...entry, revenue: roundMoney(entry.revenue) }))
+    .sort((a, b) => a.month.localeCompare(b.month));
 };
 
 // Units sold per product. Cancelled orders are excluded.
@@ -171,6 +204,7 @@ export const buildSalesReport = (orders, { topProducts = 5 } = {}) => ({
   summary: summarizeOrders(orders),
   statusBreakdown: orderStatusBreakdown(orders),
   salesByDate: salesByDate(orders),
+  salesByMonth: salesByMonth(orders),
   bestSellingProducts: bestSellingProducts(orders, topProducts),
   paymentMethods: paymentMethodBreakdown(orders),
 });

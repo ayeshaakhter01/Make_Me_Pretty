@@ -4,7 +4,7 @@ import PageContainer from '../ui/PageContainer.jsx'
 import StaggerReveal from '../ui/StaggerReveal.jsx'
 import { SEED_FOOTER } from '../../data/siteContent.js'
 import { SOCIAL_ICONS } from './socialIcons.jsx'
-import { apiRequest } from '../../api.js'
+import { apiRequest, assetUrl } from '../../api.js'
 
 /* The footer content (links, social media, payment logos) is edited by the admin in the Footer tab. */
 const linkClass = 'link-underline text-[13.5px] text-ivory/90 hover:text-pink'
@@ -39,7 +39,7 @@ export default function SiteFooter() {
   return <footer className="mt-6 bg-ink text-ivory"><PageContainer className="max-w-[1460px] py-10">
     <StaggerReveal stagger={90} className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
       <div><p className="mb-1 whitespace-nowrap font-serif text-[20px] font-semibold tracking-[0.22em]">Make Me Pretty</p><p className="mb-6 font-serif italic text-pink">we wanna make you pretty</p>
-        {payments.length > 0 && <FooterColumn title="Payments accepted"><div className="flex flex-wrap items-center gap-2">{payments.map((payment) => <span key={payment.id} title={payment.label} className="inline-flex h-11 items-center rounded-md bg-white px-2 py-1.5"><img src={payment.src} alt={payment.label} className="h-8 w-auto max-w-[80px] object-contain" /></span>)}</div></FooterColumn>}
+        {payments.length > 0 && <FooterColumn title="Payments accepted"><div className="flex flex-wrap items-center gap-2">{payments.map((payment) => <span key={payment.id} title={payment.label} className="inline-flex h-11 items-center rounded-md bg-white px-2 py-1.5"><img src={assetUrl(payment.src)} alt={payment.label} className="h-8 w-auto max-w-[80px] object-contain" /></span>)}</div></FooterColumn>}
       </div>
       <LinkColumn title="Help" links={usable(footer.helpLinks)} />
       <LinkColumn title="Customer Policy" links={usable(footer.policyLinks)} />

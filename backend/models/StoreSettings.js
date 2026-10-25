@@ -1,4 +1,3 @@
-
 import mongoose from "mongoose";
 
 const policyPageSchema = new mongoose.Schema(
@@ -30,6 +29,10 @@ const storeSettingsSchema = new mongoose.Schema(
         payments: [],
       }),
     },
+    // From main (About Us and Contact content)
+    about: { type: mongoose.Schema.Types.Mixed, default: () => [] },
+    contact: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
+    // From FYasmin12-branch (older policy storage, kept so no data is lost)
     policyPages: {
       type: [policyPageSchema],
       default: [],

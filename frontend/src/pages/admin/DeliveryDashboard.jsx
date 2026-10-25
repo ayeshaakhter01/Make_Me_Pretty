@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import Modal from '../../components/admin/Modal.jsx'
 import OrderMessages from '../../components/admin/OrderMessages.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
-import { DELIVERED, ORDER_STATUSES, card, cx, ghostButton, money, roseButton, timeLabel } from '../../components/admin/adminHelpers.js'
+import { DELIVERED, ORDER_STATUSES, card, cx, ghostButton, money, roseButton} from '../../components/admin/adminHelpers.js'
 import { apiRequest } from '../../api.js'
 import StaffAccountPanel from '../../components/admin/StaffAccountPanel.jsx'
 
@@ -44,8 +44,8 @@ export default function DeliveryDashboard({ session, onSignOut }) {
 
   useEffect(() => {
     let current = true
-    apiRequest('/delivery/assignments')
-      .then((saved) => { if (current) setOrders(saved.map((order) => ({
+    const load = () => apiRequest('/delivery/assignments')
+      .then((saved) => { if (current) setOrders((previous) => saved.map((order) => ({
         ...order, id: order._id, date: new Date(order.createdAt).toLocaleDateString(),
         name: order.address?.recipientName || order.customer?.name || 'Customer', phone: order.address?.phone || order.customer?.phone || '',
         address: [order.address?.addressLine, order.address?.area, order.address?.city].filter(Boolean).join(', '),
@@ -55,9 +55,13 @@ export default function DeliveryDashboard({ session, onSignOut }) {
         status: ['pending', 'confirmed', 'shipped', 'outForDelivery', 'delivered', 'cancelled'].indexOf(order.status),
         messageCount: order.messages?.length || 0,
         issue: order.issue || '',
+        unread: order.unreadForPartner || 0,
+        history: previous.find((item) => item.id === order._id)?.history,
       }))) })
       .catch((problem) => { if (current) setNotice(problem.message) })
-    return () => { current = false }
+    load()
+    const timer = window.setInterval(load, 15000)
+    return () => { current = false; window.clearInterval(timer) }
   }, [])
 
   const mine = orders
@@ -111,7 +115,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
       (position) => {
         const { latitude, longitude } = position.coords
         addMessage(order, 'location', 'My current location', { link: `https://www.google.com/maps?q=${latitude},${longitude}` })
-        setNotice(`Location sent to the admin for ${order.id}.`)
+        setNotice(`Location sent to the admin for ${order.orderNumber || order.id}.`)
       },
       () => setNotice('Could not get your location. Please allow location access and try again.'),
     )
@@ -155,7 +159,9 @@ export default function DeliveryDashboard({ session, onSignOut }) {
         </div>
 
         {notice && <p className="mb-4 rounded-2xl bg-pink-soft px-4 py-3 text-[13px] text-ink-soft">{notice}</p>}
-
+        {orders.filter((order) => order.unread > 0).map((order) => (
+          <button key={order.id} type="button" onClick={() => { setChatId(order.id); setOrders((current) => current.map((item) => item.id === order.id ? { ...item, unread: 0 } : item)) }} className="mb-3 mr-2 rounded-full bg-pink-soft px-4 py-2 text-[13px] text-rose-deep underline">New message from admin on {order.orderNumber || order.id} ({order.unread})</button>
+        ))}
         <div className="grid gap-4">
           {shown.length === 0 && <p className={`${card} p-6 text-sm text-ink-soft`}>No orders here.</p>}
           {shown.map((order) => {
@@ -165,7 +171,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
             return (
               <div key={order.id} className={`${card} p-5`}>
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="font-serif text-lg">{order.id}</div>
+                  <div className="font-serif text-lg">{order.orderNumber || order.id}</div>
                   <span className="rounded-full bg-pink px-2.5 py-1 text-[11px] font-medium text-rose-deep">{ORDER_STATUSES[order.status]}</span>
                   {order.issue && <span className="rounded-full bg-lowstock-bg px-2.5 py-1 text-[11px] font-semibold text-lowstock-text">Problem: {order.issue}</span>}
                   <div className="ml-auto text-sm font-semibold">{money(order.total)} <span className="text-xs font-normal text-ink-soft">· {order.method} ({order.pay})</span></div>
@@ -181,7 +187,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
                 <div className="mt-3 flex flex-wrap gap-4 text-[13px]">
                   <a href={`tel:${order.phone}`} className="text-rose underline">Call customer</a>
                   <a href={`sms:${order.phone}`} className="text-rose underline">Text customer</a>
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address)}`} target="_blank" rel="noreferrer" className="text-rose underline">Open address in Maps ↗</a>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.address}, Bangladesh`)}`} target="_blank" rel="noreferrer" className="text-rose underline">Open address in Maps ↗</a>
                 </div>
 
                 {/* cash on delivery */}
@@ -196,13 +202,14 @@ export default function DeliveryDashboard({ session, onSignOut }) {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {STEPS.map((step) => {
                     const reached = order.status >= step.status
-                    const blocked = step.status === DELIVERED && cash
+                    const needCashFirst = step.status === DELIVERED && cash
+                    const blocked = needCashFirst || (!reached && step.status !== order.status + 1)
                     return (
                       <button
                         key={step.label}
                         type="button"
                         disabled={reached || blocked}
-                        title={blocked ? 'Collect the cash first' : undefined}
+                        title={blocked ? (needCashFirst ? 'Collect the cash first' : 'Finish the previous step first') : undefined}
                         onClick={() => change(order.id, { status: step.status }, step.label)}
                         className={cx(
                           'rounded-full border-[1.5px] px-4 py-2 text-[13px] transition-colors',
@@ -216,14 +223,9 @@ export default function DeliveryDashboard({ session, onSignOut }) {
                 </div>
                 {cash && order.status < DELIVERED && <p className="mt-2 text-xs text-ink-soft">“Delivered” unlocks after you mark the cash as collected.</p>}
 
-                {/* the time of each step */}
-                {order.history?.length > 0 && (
-                  <p className="mt-3 text-xs text-ink-soft">{order.history.map((step) => `${step.label} ${timeLabel(step.at)}`).join('  →  ')}</p>
-                )}
-
                 {/* talk to the admin */}
                 <div className="mt-4 flex flex-wrap gap-3 border-t border-line pt-4">
-                  <button type="button" onClick={() => setChatId(order.id)} className={ghostButton}>{chatCount ? `Message admin (${chatCount})` : 'Message admin'}</button>
+                  <button type="button" onClick={() => { setChatId(order.id); setOrders((current) => current.map((item) => item.id === order.id ? { ...item, unread: 0 } : item)) }} className={ghostButton}>{chatCount ? `Message admin (${chatCount})` : 'Message admin'}{order.unread > 0 ? ` · ${order.unread} new` : ''}</button>
                   {!finished && <button type="button" onClick={() => setProblemId(order.id)} className={ghostButton}>Report a problem</button>}
                   {!finished && <button type="button" onClick={() => shareLocation(order)} className={ghostButton}>Share my location</button>}
                 </div>
@@ -234,13 +236,13 @@ export default function DeliveryDashboard({ session, onSignOut }) {
       </div>
 
       {chatOrder && (
-        <Modal title={`Chat with admin · ${chatOrder.id}`} onClose={() => setChatId(null)}>
+        <Modal title={`Chat with admin · ${chatOrder.orderNumber || chatOrder.id}`} onClose={() => setChatId(null)}>
           <OrderMessages order={chatOrder} me={{ from: 'partner', name: session.name }} />
         </Modal>
       )}
 
       {problemOrder && (
-        <Modal title={`Report a problem · ${problemOrder.id}`} onClose={() => setProblemId(null)}>
+        <Modal title={`Report a problem · ${problemOrder.orderNumber || problemOrder.id}`} onClose={() => setProblemId(null)}>
           <form onSubmit={reportProblem} className="grid gap-3">
             <select value={problem.reason} onChange={(event) => setProblem((current) => ({ ...current, reason: event.target.value }))}>
               {PROBLEMS.map((reason) => <option key={reason}>{reason}</option>)}
