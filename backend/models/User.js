@@ -43,6 +43,10 @@ const userSchema = new mongoose.Schema(
     },
     phone: { type: String, trim: true },
     addresses: { type: [addressSchema], default: [] },
+    // Email verification. Old and staff accounts have no value saved, so they count as verified.
+    emailVerified: { type: Boolean, default: true },
+    emailVerificationTokenHash: { type: String, select: false },
+    emailVerificationExpires: { type: Date, select: false },
     isDemo: { type: Boolean, default: false },
   },
   { timestamps: true }
