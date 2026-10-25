@@ -98,7 +98,7 @@ export async function assignDeliveryPartner(orderId, userId) {
   if (order.status === "pending") order.status = "confirmed";
   return order.save();
 }
-export const getAssignments = (partnerId) => Order.find({ deliveryPartner: partnerId, status: { $nin: ["cancelled", "delivered"] } }).sort({ createdAt: 1 }).populate("customer", "name phone").lean();
+export const getAssignments = (partnerId) => Order.find({ deliveryPartner: partnerId, status: { $ne: "cancelled" } }).sort({ createdAt: 1 }).populate("customer", "name phone").lean();
 export async function getAssignment(partnerId, orderId) {
   const order = await Order.findOne({ _id: orderId, deliveryPartner: partnerId }).populate("customer", "name phone").lean();
   if (!order) throw new AppError("Delivery assignment not found.", 404);
