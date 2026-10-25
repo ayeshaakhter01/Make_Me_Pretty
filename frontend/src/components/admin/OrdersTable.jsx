@@ -83,7 +83,6 @@ export default function OrdersTable({ orders, setOrders, partners, openChatId, o
                   <td className={td}>
                     <div className="font-semibold">{order.orderNumber || order.id}</div>
                     <div className="text-xs text-ink-soft">{order.date}</div>
-                    {order.isDemo && <span className="mt-1 inline-block rounded-full bg-pink px-2 py-0.5 text-[10px] font-semibold text-rose-deep">Sample data</span>}
                     {order.issue && <span className="mt-1 inline-block rounded-full bg-lowstock-bg px-2 py-0.5 text-[10px] font-semibold text-lowstock-text">Issue</span>}
                   </td>
                   <td className={td}><div>{order.name}</div>{order.accountEmail && <div className="text-xs text-ink-soft">{order.accountEmail}</div>}{order.address && order.address !== order.name && <div className="mt-1 text-xs text-ink-soft">Deliver to: {order.address}</div>}</td>
