@@ -87,8 +87,8 @@ export default function SkinAdvisorPage() {
           <>
             <div className="mb-8 text-center">
               <h2 className="font-serif text-3xl">Your personalised picks</h2>
-              <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-rose">{result.mode === 'ai' ? 'OpenAI recommendations' : 'Catalog matching · AI unavailable'}</p>
-              <ul className="mt-4 flex flex-wrap justify-center gap-2">{result.concerns.map((concern) => <li key={concern.id} className="rounded-full border border-rose/30 bg-pink-soft px-3.5 py-1 text-xs font-medium text-rose-deep">{concern.label}</li>)}</ul>
+              <p className="mt-2 text-xs font-medium uppercase tracking-[0.12em] text-rose">{result.mode === 'ai' ? 'AI recommendations' : 'Catalog matching · AI unavailable'}</p>
+              <ul className="mt-4 flex flex-wrap justify-center gap-2">{(result.concerns ?? []).map((concern) => <li key={concern.id} className="rounded-full border border-rose/30 bg-pink-soft px-3.5 py-1 text-xs font-medium text-rose-deep">{concern.label}</li>)}</ul>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-ink-soft">{result.summary}</p>
             </div>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
