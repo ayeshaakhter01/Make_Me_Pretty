@@ -1,10 +1,11 @@
-import { Link, useParams } from 'react-router-dom'
+  import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import ProductGallery from '../components/products/ProductGallery.jsx'
 import ProductGrid from '../components/products/ProductGrid.jsx'
 import ProductBenefits from '../components/products/ProductBenefits.jsx'
 import ProductUsage from '../components/products/ProductUsage.jsx'
 import ProductReviewForm from '../components/products/ProductReviewForm.jsx'
+import { ReviewPhotos } from '../components/products/ReviewPhoto.jsx'
 import Icon from '../components/ui/Icon.jsx'
 import PageContainer from '../components/ui/PageContainer.jsx'
 import { useCart } from '../context/useCart.js'
@@ -15,6 +16,7 @@ const money = (amount) => `৳${amount.toLocaleString('en-BD')}`
 
 export default function ProductPage() {
   const { productId } = useParams()
+  const [searchParams] = useSearchParams()
   const { products } = useCatalog()
   const product = products.find((item) => item.id === productId || item.slug === productId)
   const { addItem, toggleWishlist, isWishlisted } = useCart()
@@ -52,7 +54,7 @@ export default function ProductPage() {
           <div className="flex flex-wrap gap-2">{product.badge && <span className="rounded-full bg-gold-soft px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8a6a2f]">{product.badge}</span>}<span className="rounded-full bg-cream px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-soft">{product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}</span></div>
           <p className="mt-4 text-[11px] uppercase tracking-[0.18em] text-ink-soft">{product.category} · {product.type}</p>
           <h1 className="mt-2 font-display text-[clamp(30px,4vw,48px)] leading-[1.1]">{product.name}</h1>
-          <p className="mt-3 flex items-center gap-2 text-sm text-ink-soft"><span className="flex gap-0.5 text-gold" aria-label={`${ratingSummary.average} out of 5 stars`}>{Array.from({ length: 5 }, (_, index) => <Icon key={index} name="star" className={`size-3.5 ${index < Math.round(ratingSummary.average) ? 'fill-current' : ''}`}/>)}</span><span>{ratingSummary.average} · {ratingSummary.count} reviews</span></p>
+          <a href="#product-reviews" onClick={(event) => { event.preventDefault(); document.getElementById('product-reviews')?.scrollIntoView({ behavior: 'smooth' }) }} className="mt-3 flex w-fit items-center gap-2 text-sm text-ink-soft transition hover:text-rose-deep"><span className="flex gap-0.5 text-gold" aria-label={`${ratingSummary.average} out of 5 stars`}>{Array.from({ length: 5 }, (_, index) => <Icon key={index} name="star" className={`size-3.5 ${index < Math.round(ratingSummary.average) ? 'fill-current' : ''}`}/>)}</span><span>{ratingSummary.count} {ratingSummary.count === 1 ? 'review' : 'reviews'}</span></a>
           <div className="mt-6 flex items-baseline gap-3"><span className="text-[28px] font-semibold">{money(product.price)}</span>{product.old > product.price && <span className="text-base text-ink-soft line-through">{money(product.old)}</span>}</div>
           <p className="mt-5 max-w-xl text-[15px] leading-7 text-ink-soft">{product.description}</p>
           <div className="mt-6"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft">Best for · {product.skin}</p><div className="mt-3 flex flex-wrap gap-2">{(product.ingredients || product.ing || []).map((ingredient) => <span key={ingredient} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-cream px-3.5 py-2 text-[12px] text-ink-soft"><span aria-hidden="true" className="text-[11px] text-rose">✿</span>{ingredient}</span>)}</div></div>
@@ -67,24 +69,26 @@ export default function ProductPage() {
     </PageContainer>
     <PageContainer className="mt-16 pb-0 pt-0"><ProductUsage product={product}/></PageContainer>
     <PageContainer className="mt-16 pb-0 pt-0">
-      <section aria-labelledby="product-reviews-title" className="mx-auto max-w-300">
+      <section id="product-reviews" aria-labelledby="product-reviews-title" className="mx-auto max-w-300 scroll-mt-28">
         <h2 id="product-reviews-title" className="mb-6 font-serif text-[28px] font-normal">What customers say</h2>
-        {approvedReviews.some((review) => review.isDemo) && <p className="-mt-4 mb-5 text-xs text-ink-soft">Includes review examples for preview.</p>}
+        {approvedReviews.some((review) => review.isDemo) && <p className="-mt-4 mb-5 text-xs text-ink-soft">Reviews of customers.</p>}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(myReviews[product.id] || []).map((review, index) => <article key={`mine-${index}`} className="rounded-[22px] border border-rose/30 bg-cream p-6">
             <p className="text-[14px] tracking-[0.12em] text-gold" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}<span className="text-line">{'★'.repeat(5 - review.rating)}</span></p>
             {review.title && <p className="mt-2 text-[14.5px] font-medium">{review.title}</p>}
             <p className="my-3 text-[14.5px] leading-relaxed text-ink">“{review.text}”</p>
+            <ReviewPhotos review={review} name={review.name} className="mb-3" />
             <p className="text-[13px] text-ink-soft">{review.name} · <span className="text-rose">Pending approval</span></p>
           </article>)}
           {approvedReviews.map((review) => <article key={review._id} className="rounded-[22px] border border-line bg-cream p-6">
             <p className="text-[14px] tracking-[0.12em] text-gold" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{review.rating < 5 && <span className="text-line">{'★'.repeat(5 - review.rating)}</span>}</p>
             {review.title && <p className="mt-2 font-medium">{review.title}</p>}
             <p className="my-3 text-[14.5px] leading-relaxed text-ink">“{review.text}”</p>
+            <ReviewPhotos review={review} name={review.customerName} className="mb-3" />
             <p className="text-[13px] text-ink-soft">{review.customerName}</p>
           </article>)}
         </div>
-        <ProductReviewForm key={product.id} product={product} onSubmit={(review) => setMyReviews((current) => ({ ...current, [product.id]: [review, ...(current[product.id] || [])] }))}/>
+        <ProductReviewForm key={product.id} product={product} autoOpen={searchParams.get('review') === '1'} onSubmit={(review) => setMyReviews((current) => ({ ...current, [product.id]: [review, ...(current[product.id] || [])] }))}/>
       </section>
     </PageContainer>
     {related.length > 0 && <PageContainer className="mt-16 max-w-300 pb-14 pt-0"><h2 className="mb-6 font-serif text-[28px] font-normal">Complete the ritual</h2><ProductGrid products={related}/></PageContainer>}
