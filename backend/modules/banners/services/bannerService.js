@@ -1,4 +1,5 @@
 import Banner from "../../../models/Banner.js";
+import AppError from "../../../utils/AppError.js";
 
 const trimIfString = (value) => (typeof value === "string" ? value.trim() : value);
 
@@ -35,18 +36,7 @@ export const createBanner = async (bannerData) => {
 };
 
 export const updateBanner = async (id, bannerData) => {
-  const allowedFields = [
-    "title",
-    "subtitle",
-    "type",
-    "placement",
-    "pagePath",
-    "src",
-    "href",
-    "active",
-    "order",
-  ];
-
+  const allowedFields = ["title", "subtitle", "type", "placement", "pagePath", "src", "href", "active", "order"];
   const updates = {};
 
   for (const field of allowedFields) {
@@ -55,8 +45,13 @@ export const updateBanner = async (id, bannerData) => {
     }
   }
 
-  if (updates.placement === "pageHeader" && !updates.pagePath) {
-    throw Object.assign(new Error("A page path is required for a page header."), { statusCode: 400 });
+  const existing = await Banner.findById(id);
+  if (!existing) return null;
+
+  const placement = updates.placement ?? existing.placement;
+  const pagePath = updates.pagePath ?? existing.pagePath;
+  if (placement === "pageHeader" && !pagePath) {
+    throw new AppError("A page path is required for a page header.", 400);
   }
 
   return await Banner.findByIdAndUpdate(id, updates, {
@@ -67,4 +62,12 @@ export const updateBanner = async (id, bannerData) => {
 
 export const deleteBanner = async (id) => {
   return await Banner.findByIdAndDelete(id);
+};
+
+export const reorderBanners = async (ids) => {
+  await Banner.bulkWrite(
+    ids.map((id, position) => ({
+      updateOne: { filter: { _id: id, placement: "hero" }, update: { $set: { order: position } } },
+    }))
+  );
 };

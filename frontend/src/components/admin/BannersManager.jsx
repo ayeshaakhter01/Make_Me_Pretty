@@ -67,6 +67,19 @@ export default function BannersManager({ slides, setSlides, logo, setLogo }) {
   const heroSlides = slides.filter((slide) => slide.placement !== 'pageHeader')
   const showing = heroSlides.filter((slide) => slide.active).length
 
+    async function move(index, direction) {
+    const target = index + direction
+    if (target < 0 || target >= heroSlides.length) return
+    const next = [...heroSlides]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    const reordered = next.map((slide, position) => ({ ...slide, order: position }))
+    try {
+      await apiRequest('/banners/reorder', { method: 'PATCH', body: JSON.stringify({ ids: reordered.map((slide) => slide.id) }) })
+      setSlides((current) => [...current.filter((slide) => slide.placement === 'pageHeader'), ...reordered])
+      setError('')
+    } catch (problem) { setError(problem.message) }
+  }
+
   return (
     <div className="grid gap-8">
       <section>
@@ -84,7 +97,7 @@ export default function BannersManager({ slides, setSlides, logo, setLogo }) {
           <div className="grid content-start gap-3">
             {loading && <p className={`${card} p-6 text-sm text-ink-soft`}>Loading banners from database…</p>}
             {!loading && heroSlides.length === 0 && <p className={`${card} p-6 text-sm text-ink-soft`}>No slides in the database yet.</p>}
-          {heroSlides.map((slide) => {
+          {heroSlides.map((slide, index) => {
               const isVideo = slide.type === 'video'
               return (
                 <div key={slide.id} className={cx(`${card} flex flex-wrap items-center gap-4 p-5`, !slide.active && 'opacity-60')}>
@@ -95,6 +108,10 @@ export default function BannersManager({ slides, setSlides, logo, setLogo }) {
                     <div className="font-serif text-lg leading-tight">{slide.title || (isVideo ? 'Hero video' : 'Untitled slide')}</div>
                     <div className="text-sm text-ink-soft">{slide.subtitle || '—'}</div>
                     <div className="mt-1 text-xs text-rose">Links to {slide.href}</div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => move(index, -1)} disabled={index === 0} aria-label="Move slide up" className="size-8 rounded-full border border-line text-xs text-ink-soft hover:border-rose hover:text-rose disabled:opacity-30">↑</button>
+                    <button type="button" onClick={() => move(index, 1)} disabled={index === heroSlides.length - 1} aria-label="Move slide down" className="size-8 rounded-full border border-line text-xs text-ink-soft hover:border-rose hover:text-rose disabled:opacity-30">↓</button>
                   </div>
                   <button type="button" onClick={() => toggle(slide)} aria-pressed={slide.active} className={cx('rounded-full px-3 py-1 text-[11px] font-medium', slide.active ? 'bg-gold-soft text-gold' : 'bg-pink text-rose-deep')}>
                     {isVideo ? (slide.active ? 'Video on' : 'Video off') : (slide.active ? 'Showing' : 'Hidden')}

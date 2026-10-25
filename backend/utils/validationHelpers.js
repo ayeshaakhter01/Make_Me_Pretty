@@ -35,3 +35,6 @@ export const getImageSourceError = (value, label = "Image") => {
 
   return null;
 };
+
+export const isObjectIdList = (value) =>
+  Array.isArray(value) && value.length > 0 && value.length <= 100 && value.every(isObjectIdString);
