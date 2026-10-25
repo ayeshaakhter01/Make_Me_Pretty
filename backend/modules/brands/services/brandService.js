@@ -34,19 +34,13 @@ const countsByBrand = async () => new Map((await Product.aggregate([
   { $group: { _id: "$brand", n: { $sum: 1 } } },
 ])).map((row) => [row._id, row.n]));
 
-// PUBLIC: brands that are switched on AND have at least one active product.
-// A product brand that has no Brand record yet still appears (name only), so nothing disappears by accident.
+// PUBLIC: the Brand collection is the source of truth for brand cards.
+// Return active database records even when a brand has no active products yet.
 export async function listPublicBrands() {
   const [all, counts] = await Promise.all([Brand.find().sort({ order: 1, name: 1 }).lean(), countsByBrand()]);
-  const known = new Set(all.map((brand) => brand.name));
-  const listed = all
-    .filter((brand) => brand.active && counts.get(brand.name))
-    .map((brand) => ({ id: String(brand._id), name: brand.name, description: brand.description, logo: brand.logo, productCount: counts.get(brand.name) }));
-  const extras = [...counts.keys()]
-    .filter((name) => name && !known.has(name))
-    .sort()
-    .map((name) => ({ id: `auto-${name}`, name, description: "", logo: "", productCount: counts.get(name) }));
-  return [...listed, ...extras];
+  return all
+    .filter((brand) => brand.active)
+    .map((brand) => ({ id: String(brand._id), name: brand.name, description: brand.description, logo: brand.logo, productCount: counts.get(brand.name) || 0 }));
 }
 
 // ADMIN: every brand, including hidden ones.

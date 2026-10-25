@@ -1,5 +1,4 @@
 import Product from "../../../models/Product.js";
-import Order from "../../../models/Order.js";
 import AppError from "../../../utils/AppError.js";
 
 const publicFilter = { active: true };
@@ -15,17 +14,11 @@ export async function listProducts(query) {
   return { data, count: total, page, pages: Math.ceil(total / limit) };
 }
 export async function listBestSellers() {
-  const ranked = await Order.aggregate([
-    { $match: { status: { $ne: "cancelled" } } },
-    { $unwind: "$items" },
-    { $group: { _id: "$items.product", unitsSold: { $sum: "$items.quantity" } } },
-    { $sort: { unitsSold: -1, _id: 1 } },
-    { $limit: 12 },
-  ]);
-  if (!ranked.length) return [];
-  const products = await Product.find({ _id: { $in: ranked.map((item) => item._id) }, active: true }).select("-__v").lean();
-  const byId = new Map(products.map((product) => [String(product._id), product]));
-  return ranked.map((item) => byId.get(String(item._id))).filter(Boolean);
+  return Product.find({ ...publicFilter, badge: "Bestseller" })
+    .sort({ updatedAt: -1, _id: 1 })
+    .limit(12)
+    .select("-__v")
+    .lean();
 }
 export async function listAdminProducts() {
   return Product.find().sort({ active: -1, brand: 1, name: 1 }).select("-__v").lean();
