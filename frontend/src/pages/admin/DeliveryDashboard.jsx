@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import Modal from '../../components/admin/Modal.jsx'
 import OrderMessages from '../../components/admin/OrderMessages.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
-import { DELIVERED, ORDER_STATUSES, card, cx, ghostButton, money, roseButton, timeLabel } from '../../components/admin/adminHelpers.js'
+import { DELIVERED, ORDER_STATUSES, card, cx, ghostButton, money, roseButton} from '../../components/admin/adminHelpers.js'
 import { apiRequest } from '../../api.js'
 import StaffAccountPanel from '../../components/admin/StaffAccountPanel.jsx'
 
@@ -222,11 +222,6 @@ export default function DeliveryDashboard({ session, onSignOut }) {
                   })}
                 </div>
                 {cash && order.status < DELIVERED && <p className="mt-2 text-xs text-ink-soft">“Delivered” unlocks after you mark the cash as collected.</p>}
-
-                {/* the time of each step */}
-                {order.history?.length > 0 && (
-                  <p className="mt-3 text-xs text-ink-soft">{order.history.map((step) => `${step.label} ${timeLabel(step.at)}`).join('  →  ')}</p>
-                )}
 
                 {/* talk to the admin */}
                 <div className="mt-4 flex flex-wrap gap-3 border-t border-line pt-4">
