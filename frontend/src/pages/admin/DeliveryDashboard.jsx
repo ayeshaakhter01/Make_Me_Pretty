@@ -111,7 +111,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
       (position) => {
         const { latitude, longitude } = position.coords
         addMessage(order, 'location', 'My current location', { link: `https://www.google.com/maps?q=${latitude},${longitude}` })
-        setNotice(`Location sent to the admin for ${order.id}.`)
+        setNotice(`Location sent to the admin for ${order.orderNumber || order.id}.`)
       },
       () => setNotice('Could not get your location. Please allow location access and try again.'),
     )
@@ -165,7 +165,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
             return (
               <div key={order.id} className={`${card} p-5`}>
                 <div className="flex flex-wrap items-center gap-3">
-                  <div className="font-serif text-lg">{order.id}</div>
+                  <div className="font-serif text-lg">{order.orderNumber || order.id}</div>
                   <span className="rounded-full bg-pink px-2.5 py-1 text-[11px] font-medium text-rose-deep">{ORDER_STATUSES[order.status]}</span>
                   {order.issue && <span className="rounded-full bg-lowstock-bg px-2.5 py-1 text-[11px] font-semibold text-lowstock-text">Problem: {order.issue}</span>}
                   <div className="ml-auto text-sm font-semibold">{money(order.total)} <span className="text-xs font-normal text-ink-soft">· {order.method} ({order.pay})</span></div>
@@ -181,7 +181,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
                 <div className="mt-3 flex flex-wrap gap-4 text-[13px]">
                   <a href={`tel:${order.phone}`} className="text-rose underline">Call customer</a>
                   <a href={`sms:${order.phone}`} className="text-rose underline">Text customer</a>
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address)}`} target="_blank" rel="noreferrer" className="text-rose underline">Open address in Maps ↗</a>
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${order.address}, Bangladesh`)}`} target="_blank" rel="noreferrer" className="text-rose underline">Open address in Maps ↗</a>
                 </div>
 
                 {/* cash on delivery */}
@@ -196,13 +196,14 @@ export default function DeliveryDashboard({ session, onSignOut }) {
                 <div className="mt-4 flex flex-wrap gap-2">
                   {STEPS.map((step) => {
                     const reached = order.status >= step.status
-                    const blocked = step.status === DELIVERED && cash
+                    const needCashFirst = step.status === DELIVERED && cash
+                    const blocked = needCashFirst || (!reached && step.status !== order.status + 1)
                     return (
                       <button
                         key={step.label}
                         type="button"
                         disabled={reached || blocked}
-                        title={blocked ? 'Collect the cash first' : undefined}
+                        title={blocked ? (needCashFirst ? 'Collect the cash first' : 'Finish the previous step first') : undefined}
                         onClick={() => change(order.id, { status: step.status }, step.label)}
                         className={cx(
                           'rounded-full border-[1.5px] px-4 py-2 text-[13px] transition-colors',
@@ -234,13 +235,13 @@ export default function DeliveryDashboard({ session, onSignOut }) {
       </div>
 
       {chatOrder && (
-        <Modal title={`Chat with admin · ${chatOrder.id}`} onClose={() => setChatId(null)}>
+        <Modal title={`Chat with admin · ${chatOrder.orderNumber || chatOrder.id}`} onClose={() => setChatId(null)}>
           <OrderMessages order={chatOrder} me={{ from: 'partner', name: session.name }} />
         </Modal>
       )}
 
       {problemOrder && (
-        <Modal title={`Report a problem · ${problemOrder.id}`} onClose={() => setProblemId(null)}>
+        <Modal title={`Report a problem · ${problemOrder.orderNumber || problemOrder.id}`} onClose={() => setProblemId(null)}>
           <form onSubmit={reportProblem} className="grid gap-3">
             <select value={problem.reason} onChange={(event) => setProblem((current) => ({ ...current, reason: event.target.value }))}>
               {PROBLEMS.map((reason) => <option key={reason}>{reason}</option>)}
