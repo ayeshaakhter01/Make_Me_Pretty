@@ -6,10 +6,11 @@ import User from "../../../models/User.js";
 import AppError from "../../../utils/AppError.js";
 import { validateCouponForOrder, redeemCoupon } from "../../coupons/services/couponService.js";
 
-const deliveryFee = (subtotal, city) => subtotal >= 3000 || subtotal === 0 ? 0 : city?.trim().toLowerCase() === "chattogram" ? 60 : 120;
+const deliveryFee = (subtotal, city) => subtotal >= 3000 || subtotal === 0 ? 0 : ["chattogram", "chittagong"].includes(city?.trim().toLowerCase()) ? 60 : 120;
 const ORDER_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const dhakaDay = (date) => date.toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }).slice(2).replaceAll("-", "");
 export const makeOrderNumber = (date = new Date()) => {
-  const day = date.toISOString().slice(2, 10).replaceAll("-", "");
+  const day = dhakaDay(date);
   let code = "";
   for (let i = 0; i < 6; i += 1) code += ORDER_CODE_CHARS[Math.floor(Math.random() * ORDER_CODE_CHARS.length)];
   return `MMP-${day}-${code}`;
@@ -20,7 +21,7 @@ const legacyOrderNumber = (order) => {
 };
 export async function createOrder(customerId, input) {
   if (!Array.isArray(input.items) || input.items.length === 0 || input.items.length > 50) throw new AppError("Add at least one item to your order.", 400);
-  if (!input.address || typeof input.address.addressLine !== "string" || !input.address.addressLine.trim() || !input.address.phone?.trim()) throw new AppError("A delivery address and phone number are required.", 400);
+  if (!input.address || typeof input.address.addressLine !== "string" || !input.address.addressLine.trim() || !input.address.phone?.trim() || !input.address.recipientName?.trim()) throw new AppError("A recipient name, delivery address and phone number are required.", 400);
   if (input.paymentMethod !== "cod") throw new AppError("Online payments are not configured yet. Choose Cash on Delivery.", 400);
   const quantities = new Map();
   for (const item of input.items) {
@@ -152,6 +153,7 @@ export async function updateDeliveryStatus(partnerId, orderId, status) {
   const order = await Order.findOne({ _id: orderId, deliveryPartner: partnerId });
   if (!order) throw new AppError("Delivery assignment not found.", 404);
   if (!next[order.status] || next[order.status] !== status) throw new AppError("This status change is not allowed for the current delivery stage.", 409);
+  if (status === "delivered" && order.paymentMethod === "cod" && order.paymentStatus !== "paid") throw new AppError("Collect the cash before marking this order delivered.", 409);
   order.status = status;
   return order.save();
 }
