@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Modal from './Modal.jsx'
 import { card, cx } from './adminHelpers.js'
 import { apiRequest, assetUrl } from '../../api.js'
+import { getReviewPhotos } from '../products/reviewPhotos.js'
 
 const FILTERS = ['All', 'Pending', 'Approved', 'Rejected']
 const TONE = { Approved: 'bg-gold-soft text-gold', Pending: 'bg-pink text-rose-deep', Rejected: 'bg-lowstock-bg text-lowstock-text' }
@@ -66,9 +67,10 @@ export default function ReviewsPanel() {
         {!loading && visible.length === 0 && <p className={`${card} p-6 text-sm text-ink-soft`}>No reviews in this filter.</p>}
         {visible.map((review) => (
           <div key={review.id} className={`${card} flex gap-4 p-5`}>
-            {review.image && (
-              <button type="button" onClick={() => setZoomed(review)} aria-label={`Open the photo from ${review.name}`} className="size-20 flex-shrink-0 overflow-hidden rounded-xl border border-line transition-transform hover:scale-[1.03]">
-                <img src={assetUrl(review.image)} alt={`Photo from ${review.name}`} className="size-full object-cover" />
+            {getReviewPhotos(review).length > 0 && (
+              <button type="button" onClick={() => setZoomed(review)} aria-label={`Open the photo from ${review.name}`} className="relative size-20 flex-shrink-0 overflow-hidden rounded-xl border border-line transition-transform hover:scale-[1.03]">
+                <img src={assetUrl(getReviewPhotos(review)[0])} alt={`Photo from ${review.name}`} className="size-full object-cover" />
+                {getReviewPhotos(review).length > 1 && <span className="absolute bottom-1 right-1 rounded-full bg-ink/75 px-1.5 text-[10px] text-white">+{getReviewPhotos(review).length - 1}</span>}
               </button>
             )}
 
@@ -92,7 +94,9 @@ export default function ReviewsPanel() {
 
       {zoomed && (
         <Modal title={`${zoomed.name} · ${zoomed.product}`} onClose={() => setZoomed(null)}>
-          <img src={assetUrl(zoomed.image)} alt={`Photo from ${zoomed.name}`} className="max-h-[70vh] w-full rounded-xl object-contain" />
+          <div className="grid gap-3">
+            {getReviewPhotos(zoomed).map((src, index) => <img key={src} src={assetUrl(src)} alt={`Photo ${index + 1} from ${zoomed.name}`} className="max-h-[60vh] w-full rounded-xl object-contain" />)}
+          </div>
           <p className="mt-3 text-sm text-ink-soft">{zoomed.text}</p>
         </Modal>
       )}
