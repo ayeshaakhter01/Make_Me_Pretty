@@ -1,4 +1,8 @@
 
 .env
 node_modules/
-/uploads/
+/collection/Environment/Make-Me-Pretty.postman_environment.json
+/Ayesha - Orders Payments Coupons Reports.postman_collection.json
+/uploads/*
+!/uploads/payment-logos/
+!/uploads/payment-logos/**

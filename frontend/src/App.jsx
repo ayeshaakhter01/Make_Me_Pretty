@@ -7,6 +7,7 @@ const ShopPage = lazy(() => import('./pages/ShopPage.jsx'))
 const ProductPage = lazy(() => import('./pages/ProductPage.jsx'))
 const CartPage = lazy(() => import('./pages/CartPage.jsx'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage.jsx'))
+const PaymentResultPage = lazy(() => import('./pages/PaymentResultPage.jsx'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage.jsx'))
 const AboutUsPage = lazy(() => import('./pages/AboutUsPage.jsx'))
 const ContentPage = lazy(() => import('./pages/ContentPage.jsx'))
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="cart" element={<CartPage />} />
           <Route path="checkout" element={<CheckoutPage />} />
+          <Route path="payment-result" element={<PaymentResultPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

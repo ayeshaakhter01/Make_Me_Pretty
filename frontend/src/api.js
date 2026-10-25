@@ -54,13 +54,13 @@ export async function apiRequest(path, options = {}) {
   return result.data
 }
 
-export async function uploadImage(file) {
+async function uploadImageTo(file, endpoint) {
   if (!file || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     throw new Error('Choose a JPG, PNG, or WEBP image.')
   }
   if (file.size > 10 * 1024 * 1024) throw new Error('Choose an image smaller than 10 MB.')
   const session = loadAuthSession()
-  const response = await fetch(`${API_BASE}/uploads/images`, {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': file.type, ...(session?.token ? { Authorization: `Bearer ${session.token}` } : {}) },
     body: file,
@@ -68,4 +68,12 @@ export async function uploadImage(file) {
   const result = await response.json()
   if (!response.ok || result.success === false) throw new Error(result.message || 'Image upload failed.')
   return result.data.url
+}
+
+export function uploadImage(file) {
+  return uploadImageTo(file, '/uploads/images')
+}
+
+export function uploadReviewImage(file) {
+  return uploadImageTo(file, '/reviews/image')
 }

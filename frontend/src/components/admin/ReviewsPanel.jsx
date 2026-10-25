@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Modal from './Modal.jsx'
 import { card, cx } from './adminHelpers.js'
 import { apiRequest, assetUrl } from '../../api.js'
@@ -19,9 +19,23 @@ export default function ReviewsPanel() {
   const [filter, setFilter] = useState('All')
   const [zoomed, setZoomed] = useState(null) // the review whose photo is open full size
 
+  const refreshReviews = useCallback(async () => {
+    setLoading(true)
+    try {
+      const result = await apiRequest('/admin/reviews')
+      setReviews(result.map(formatReview))
+      setError('')
+    } catch (problem) {
+      setError(problem.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
-    apiRequest('/admin/reviews').then((result) => { if (!cancelled) setReviews(result.map(formatReview)) })
+    apiRequest('/admin/reviews')
+      .then((result) => { if (!cancelled) { setReviews(result.map(formatReview)); setError('') } })
       .catch((problem) => { if (!cancelled) setError(problem.message) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
@@ -49,7 +63,7 @@ export default function ReviewsPanel() {
       {error && <p role="alert" className="mb-4 text-sm text-lowstock-text">{error}</p>}
       {loading && <p className={`${card} mb-4 p-5 text-sm text-ink-soft`}>Loading reviews from database…</p>}
       {!loading && reviews.some((review) => review.isDemo) && <p className="mb-4 text-xs text-ink-soft">Preview entries are generated examples, separate from customer-submitted reviews.</p>}
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {FILTERS.map((name) => (
           <button
             key={name}
@@ -60,6 +74,9 @@ export default function ReviewsPanel() {
             {name}
           </button>
         ))}
+        <button type="button" onClick={refreshReviews} disabled={loading} className="ml-auto rounded-full border-[1.5px] border-line bg-cream px-4 py-2 text-[13px] text-ink-soft transition hover:border-rose hover:text-rose disabled:opacity-60">
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </button>
       </div>
 
       <div className="grid gap-3">
@@ -79,6 +96,7 @@ export default function ReviewsPanel() {
                 <span className={cx('rounded-full px-2.5 py-1 text-[11px] font-medium', TONE[review.status])}>{review.status}</span>
                 <div className="ml-auto text-xs text-ink-soft">{review.product}</div>
               </div>
+              {review.title && <p className="mt-2 font-medium">{review.title}</p>}
               <p className="mt-2 text-sm text-ink-soft">{review.text}</p>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
                 {review.status !== 'Approved' && <button type="button" onClick={() => setStatus(review.id, 'Approved')} className="text-rose underline">Approve</button>}

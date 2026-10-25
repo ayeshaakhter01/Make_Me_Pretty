@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
+    "test": "node --test",
     "admin:create": "node scripts/createAdmin.js",
     "admin:reset-password": "node scripts/resetAdminPassword.js",
     "seed:promotions": "node scripts/seedPromotions.js",

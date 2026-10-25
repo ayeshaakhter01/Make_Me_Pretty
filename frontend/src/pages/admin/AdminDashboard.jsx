@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import AdminSidebar from '../../components/admin/AdminSidebar.jsx'
 import StatCard from '../../components/admin/StatCard.jsx'
 import OrdersTable from '../../components/admin/OrdersTable.jsx'
@@ -10,10 +10,11 @@ import FooterManager from '../../components/admin/FooterManager.jsx'
 import ReviewsPanel from '../../components/admin/ReviewsPanel.jsx'
 import UsersPanel from '../../components/admin/UsersPanel.jsx'
 import DeliveryPanel from '../../components/admin/DeliveryPanel.jsx'
+import ContactMessagesPanel from '../../components/admin/ContactMessagesPanel.jsx'
 import BehaviourPanel from '../../components/admin/BehaviourPanel.jsx'
 import BlogManager from '../../components/admin/BlogManager.jsx'
 import StaffAccountPanel from '../../components/admin/StaffAccountPanel.jsx'
-import { CANCELLED, money } from '../../components/admin/adminHelpers.js'
+import { money } from '../../components/admin/adminHelpers.js'
 import { SEED_FOOTER } from '../../data/siteContent.js'
 import { apiRequest } from '../../api.js'
 
@@ -26,6 +27,8 @@ export default function AdminDashboard({ session, onSignOut }) {
   const [coupons, setCoupons] = useState([])
   const [heroSlides, setHeroSlides] = useState([])
   const [footer, setFooter] = useState(SEED_FOOTER)
+  const [aboutContent, setAboutContent] = useState([])
+  const [contactContent, setContactContent] = useState(null)
   const [logo, setLogo] = useState('')
   const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [settingsError, setSettingsError] = useState('')
@@ -34,6 +37,9 @@ export default function AdminDashboard({ session, onSignOut }) {
   const [blogsLoading, setBlogsLoading] = useState(true)
   const [blogsError, setBlogsError] = useState('')
   const [ordersError, setOrdersError] = useState('')
+  const [salesReport, setSalesReport] = useState(null)
+  const [salesReportLoading, setSalesReportLoading] = useState(true)
+  const [salesReportError, setSalesReportError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
 
   useEffect(() => {
@@ -41,6 +47,8 @@ export default function AdminDashboard({ session, onSignOut }) {
     apiRequest('/site-settings').then((settings) => {
       if (cancelled) return
       setFooter(settings.footer || SEED_FOOTER)
+      setAboutContent(Array.isArray(settings.about) ? settings.about : [])
+      setContactContent(settings.contact || {})
       setLogo(settings.logo || '')
       setSettingsLoaded(true)
       setSettingsError('')
@@ -52,12 +60,12 @@ export default function AdminDashboard({ session, onSignOut }) {
   useEffect(() => {
     if (!settingsLoaded) return undefined
     const timer = window.setTimeout(() => {
-      apiRequest('/site-settings', { method: 'PATCH', body: JSON.stringify({ footer, logo }) })
+      apiRequest('/site-settings', { method: 'PATCH', body: JSON.stringify({ footer, logo, about: aboutContent, contact: contactContent }) })
         .then(() => { setSettingsError(''); window.dispatchEvent(new Event('mmp-site-settings-change')) })
         .catch((problem) => setSettingsError(`Could not save store settings: ${problem.message}`))
     }, 500)
     return () => window.clearTimeout(timer)
-  }, [footer, logo, settingsLoaded])
+  }, [footer, logo, aboutContent, contactContent, settingsLoaded])
 
   useEffect(() => {
     let cancelled = false
@@ -88,6 +96,23 @@ export default function AdminDashboard({ session, onSignOut }) {
       .catch((problem) => { if (!cancelled) setOrdersError(problem.message) })
     return () => { cancelled = true }
   }, [setOrders, setPartners])
+
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/admin/reports/sales')
+      .then((report) => {
+        if (cancelled) return
+        setSalesReport(report)
+        setSalesReportError('')
+      })
+      .catch((problem) => {
+        if (!cancelled) setSalesReportError(problem.message || 'Could not load sales report.')
+      })
+      .finally(() => {
+        if (!cancelled) setSalesReportLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [])
 
   
   useEffect(() => {
@@ -128,18 +153,6 @@ export default function AdminDashboard({ session, onSignOut }) {
   }, [])
 
 
-  /* numbers for the boxes at the top */
-  const stats = useMemo(() => {
-    const paid = orders.filter((o) => o.pay === 'Paid' && o.status !== CANCELLED)
-    const revenue = paid.reduce((sum, o) => sum + o.total, 0)
-    return {
-      revenue,
-      count: orders.length,
-      average: paid.length ? Math.round(revenue / paid.length) : 0,
-      low: products.filter((p) => p.stock <= 5).length,
-    }
-  }, [orders, products])
-
   /* orders where a delivery partner reported a problem */
   const issues = orders.filter((order) => order.issue)
 
@@ -166,24 +179,22 @@ export default function AdminDashboard({ session, onSignOut }) {
           )}
 
           {ordersError && <p role="alert" className="mb-4 text-sm text-lowstock-text">Could not load live orders and delivery partners: {ordersError}</p>}
-          {orders.some((order) => order.isDemo) && <p className="mb-4 text-xs text-ink-soft">Reports include clearly marked sample coursework orders and customers.</p>}
-
           {(tab === 'Orders' || tab === 'Analytics') && (
             <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <StatCard label="Revenue (paid)" value={money(stats.revenue)} accent="var(--color-rose)" />
-              <StatCard label="Orders" value={stats.count} />
-              <StatCard label="Avg. order" value={money(stats.average)} accent="var(--color-gold)" />
-              <StatCard label="Low-stock alerts" value={stats.low} accent={stats.low ? '#B3543D' : 'var(--color-ink)'} />
+              <StatCard label="Revenue (received)" value={salesReportLoading ? 'Loading…' : salesReportError ? 'Unavailable' : money(salesReport?.summary?.receivedRevenue || 0)} accent="var(--color-rose)" />
+              <StatCard label="Orders" value={salesReportLoading ? 'Loading…' : salesReportError ? 'Unavailable' : salesReport?.summary?.totalOrders ?? 0} />
+              <StatCard label="Avg. received order" value={salesReportLoading ? 'Loading…' : salesReportError ? 'Unavailable' : money(salesReport?.summary?.averageReceivedOrderValue || 0)} accent="var(--color-gold)" />
+              <StatCard label="Low-stock alerts" value={products.filter((product) => product.stock <= 5).length} accent={products.some((product) => product.stock <= 5) ? '#B3543D' : 'var(--color-ink)'} />
             </div>
           )}
 
           {tab === 'Orders' && <OrdersTable orders={orders} setOrders={setOrders} partners={partners} />}
           {tab === 'Inventory' && <InventoryManager products={products} setProducts={setProducts} />}
           {tab === 'Behaviour' && <BehaviourPanel />}
-          {tab === 'Analytics' && <AnalyticsPanel orders={orders} />}
+          {tab === 'Analytics' && <AnalyticsPanel report={salesReport} loading={salesReportLoading} error={salesReportError} />}
           {tab === 'Coupons' && <CouponManager coupons={coupons} setCoupons={setCoupons} />}
           {tab === 'Banners' && <BannersManager slides={heroSlides} setSlides={setHeroSlides} logo={logo} setLogo={setLogo} />}
-          {tab === 'Footer' && <><p className="mb-3 text-sm text-ink-soft">{!settingsLoaded ? (settingsError || 'Loading settings from database…') : settingsError || 'Changes save to the database automatically.'}</p><FooterManager footer={footer} setFooter={setFooter} /></>}
+          {tab === 'Footer' && <><p className="mb-3 text-sm text-ink-soft">{!settingsLoaded ? (settingsError || 'Loading settings from database…') : settingsError || 'Changes save to the database automatically.'}</p><FooterManager footer={footer} setFooter={setFooter} about={aboutContent} setAbout={setAboutContent} contact={contactContent} setContact={setContactContent} /></>}
           {tab === 'Reviews' && <ReviewsPanel />}
           {tab === 'Blog' && (
             blogsLoading ? (
@@ -195,6 +206,7 @@ export default function AdminDashboard({ session, onSignOut }) {
             )
           )}
           {tab === 'Users' && <UsersPanel />}
+          {tab === 'Contact' && <ContactMessagesPanel />}
           {tab === 'Delivery' && <DeliveryPanel partners={partners} setPartners={setPartners} orders={orders} />}
         </main>
       </div>

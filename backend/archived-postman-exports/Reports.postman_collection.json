@@ -1,0 +1,385 @@
+{
+  "info": {
+    "_postman_id": "b6a0da2a-cce1-46c5-947c-18ffe9a3d071",
+    "name": "Make Me Pretty - Reports",
+    "description": "Module-specific API checks for Make Me Pretty. Import this collection separately. Configure its own collection variables and credentials. Start with Setup & Authentication, then run the module folder. SSLCommerz tests contact the configured sandbox and never treat browser redirects as proof of payment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Setup & Authentication",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('API is healthy', () => pm.response.to.have.status(200));",
+                  "pm.test('Success envelope is present', () => pm.expect(pm.response.json().success).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Demo Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Registration returns 201 or duplicate 409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Customer login succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { pm.environment.set('customerToken', pm.response.json().data.token); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products?page=1&limit=24"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Catalog endpoint returns success', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const page = pm.response.json().data; pm.test('Product listing has the documented response shape', () => pm.expect(page.data).to.be.an('array')); const product = page.data?.find((item) => Number(item.stock) > 0); if (product && !pm.environment.get('productId')) pm.environment.set('productId', product._id); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin credentials authenticate', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.environment.set('adminToken', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login delivery partner",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{deliveryEmail}}\",\n  \"password\": \"{{deliveryPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Delivery partner credentials authenticate', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.environment.set('deliveryPartnerToken', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Sales report (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/reports/sales"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sales report returns 200',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200){const d=pm.response.json().data;const s=d.summary;pm.test('Report includes backend summary and sections',()=>{pm.expect(s).to.be.an('object');pm.expect(d.salesByDate).to.be.an('array');pm.expect(d.salesByMonth).to.be.an('array');pm.expect(d.statusBreakdown).to.be.an('object');pm.expect(d.bestSellingProducts).to.be.an('array');pm.expect(d.paymentMethods).to.be.an('array');pm.expect(d.receivedOrders).to.be.an('array');});const round=n=>Math.round(n*100)/100;const dayTotal=round(d.salesByDate.reduce((sum,item)=>sum+item.revenue,0));const monthTotal=round(d.salesByMonth.reduce((sum,item)=>sum+item.revenue,0));pm.test('Daily and monthly received revenue totals match summary',()=>{pm.expect(dayTotal).to.eql(round(s.receivedRevenue));pm.expect(monthTotal).to.eql(round(s.receivedRevenue));});pm.test('Monthly received-order counts match summary',()=>pm.expect(d.salesByMonth.reduce((sum,item)=>sum+item.orders,0)).to.eql(s.receivedOrderCount));pm.test('Dates and months use consistent YYYY-MM keys',()=>{d.salesByDate.forEach(item=>pm.expect(item.date).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));d.salesByMonth.forEach(item=>pm.expect(item.month).to.match(/^\\d{4}-\\d{2}$/));});pm.test('Received order rows include backend month key and no demo flag',()=>d.receivedOrders.forEach(item=>{pm.expect(item.month).to.eql(item.date.slice(0,7));pm.expect(item).not.to.have.property('isDemo');}));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sales report without authentication (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/reports/sales"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sales report requires authentication',()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sales report as customer (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/reports/sales"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Customer cannot read admin sales report',()=>pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Best-selling products report (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/reports/products"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Product report returns 200',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200)pm.test('Product report is an array of backend totals',()=>{pm.expect(pm.response.json().data).to.be.an('array');pm.response.json().data.forEach(item=>{pm.expect(item.unitsSold).to.be.a('number');pm.expect(item.revenue).to.be.a('number');});});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Behaviour report (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/reports/behaviour"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Behaviour report returns 200',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200)pm.test('Behaviour report returns expected data groups',()=>{const d=pm.response.json().data;['users','orders','carts','wishlists','products'].forEach(key=>pm.expect(d[key]).to.be.an('array'));});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "orderNumber",
+      "value": ""
+    },
+    {
+      "key": "orderPhone",
+      "value": "01700000000"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "cod-checkout-attempt-0001"
+    },
+    {
+      "key": "orderId",
+      "value": ""
+    },
+    {
+      "key": "sslOrderId",
+      "value": ""
+    },
+    {
+      "key": "sslTransactionId",
+      "value": ""
+    },
+    {
+      "key": "sslCommerzEnabled",
+      "value": "false"
+    },
+    {
+      "key": "codRunKey",
+      "value": ""
+    },
+    {
+      "key": "sslRunKey",
+      "value": ""
+    },
+    {
+      "key": "sslPaymentKey",
+      "value": ""
+    },
+    {
+      "key": "deliveryPartnerId",
+      "value": ""
+    },
+    {
+      "key": "invalidTransactionId",
+      "value": "MMP-POSTMAN-INVALID-0000000000"
+    },
+    {
+      "key": "otherCustomerOrderId",
+      "value": ""
+    },
+    {
+      "key": "sslFailedTransactionId",
+      "value": ""
+    },
+    {
+      "key": "sslCancelledTransactionId",
+      "value": ""
+    },
+    {
+      "key": "cancelOrderId",
+      "value": ""
+    },
+    {
+      "key": "cancelRunKey",
+      "value": ""
+    },
+    {
+      "key": "sslFailedOrderId",
+      "value": ""
+    },
+    {
+      "key": "sslCancelledOrderId",
+      "value": ""
+    },
+    {
+      "key": "couponTestCode",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "couponTestId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
