@@ -3,19 +3,25 @@ import Order from "../../../models/Order.js";
 import Payment from "../../../models/Payment.js";
 import Product from "../../../models/Product.js";
 import Coupon from "../../../models/Coupon.js";
+import Cart from "../../../models/Cart.js";
 import User from "../../../models/User.js";
 import AppError from "../../../utils/AppError.js";
 import { validateCouponForOrder, redeemCoupon } from "../../coupons/services/couponService.js";
 import { calculateOrderTotals, normalizeOrderRequest, paymentStatusAfterFulfillmentChange, validateCodCollection, validateIdempotencyKey } from "./orderHelpers.js";
 
-const makeOrderNumber = () => {
-  const day = new Date().toISOString().slice(2, 10).replaceAll("-", "");
-  return `MMP-${day}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+const ORDER_CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const dhakaDay = (date) => date.toLocaleDateString("en-CA", { timeZone: "Asia/Dhaka" }).slice(2).replaceAll("-", "");
+export const makeOrderNumber = (date = new Date()) => {
+  const day = dhakaDay(date);
+  let code = "";
+  for (let i = 0; i < 6; i += 1) code += ORDER_CODE_CHARS[Math.floor(Math.random() * ORDER_CODE_CHARS.length)];
+  return `MMP-${day}-${code}`;
 };
 const legacyOrderNumber = (order) => {
   const day = new Date(order.createdAt).toISOString().slice(2, 10).replaceAll("-", "");
   return `MMP-${day}-${String(order._id).slice(-6).toUpperCase()}`;
 };
+
 
 async function withOptionalTransaction(work) {
   if (mongoose.connection.readyState !== 1) return work(null);
@@ -78,6 +84,8 @@ export async function createOrder(customerId, input, rawIdempotencyKey) {
     }
     order = await Order.create({ orderNumber: makeOrderNumber(), customer: customerId, items, address, ...totals, couponCode, paymentMethod, paymentStatus: "pending", idempotencyKey, requestFingerprint: fingerprint });
     if (paymentMethod === "cod") payment = await Payment.create({ order: order._id, attemptNumber: 1, customer: customerId, paymentMethod: "cod", amount: order.total, currency: "BDT", status: "pending", gateway: "cod" });
+    // Order saved: remove ONLY the ordered products from the saved cart. If this fails, the order must still stay.
+    await Cart.updateOne({ customer: customerId }, { $pull: { items: { product: { $in: products.map((product) => product._id) } } } }).catch(() => undefined);
     return order;
   } catch (error) {
     const rollback = [];
@@ -100,11 +108,6 @@ export async function getMyOrders(customerId) {
   const orders = await Order.find({ customer: customerId }).sort({ createdAt: -1 }).lean();
   return orders.map((order) => ({ ...order, messageCount: order.messages?.length || 0, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
 }
-export async function trackOrder(orderNumber, phone) {
-  const order = await Order.findOne({ orderNumber: orderNumber.trim().toUpperCase(), "address.phone": phone.trim() }).select("orderNumber status total createdAt").lean();
-  if (!order) throw new AppError("Order not found. Check the tracking number and checkout phone number.", 404);
-  return order;
-}
 export async function getMyOrder(customerId, id) {
   const order = await Order.findOne({ _id: id, customer: customerId }).lean();
   if (!order) throw new AppError("Order not found.", 404);
@@ -112,10 +115,10 @@ export async function getMyOrder(customerId, id) {
 }
 export async function getAllOrders() {
   const orders = await Order.find().sort({ createdAt: -1 }).populate("customer", "name email phone").populate("deliveryPartner", "name").lean();
-  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order) }));
+  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order), unreadForAdmin: unreadCount(order, "admin"), unreadForPartner: unreadCount(order, "deliveryPartner") }));
 }
 export async function updateOrderStatus(id, status) {
-  const allowed = ["confirmed", "shipped", "outForDelivery", "delivered", "cancelled"];
+  const allowed = ["confirmed", "cancelled"];
   if (!allowed.includes(status)) throw new AppError(`Status must be one of: ${allowed.join(", ")}.`, 400);
   return withOptionalTransaction(async (session) => {
     const options = session ? { session } : {};
@@ -133,6 +136,7 @@ export async function updateOrderStatus(id, status) {
       return order;
     }
     if (["cancelled", "delivered"].includes(order.status)) throw new AppError("This order can no longer change status.", 409);
+    if (status === "confirmed" && order.status !== "pending") throw new AppError("Only pending orders can be confirmed.", 409);
     const nextPaymentStatus = paymentStatusAfterFulfillmentChange(order, status);
     if (status === "cancelled" && ["cod", "sslcommerz"].includes(order.paymentMethod)
       && await Payment.countDocuments({ order: order._id, status: { $in: ["paid", "refunded"] } }, options)) {
@@ -144,6 +148,7 @@ export async function updateOrderStatus(id, status) {
     let sslPaymentsChanged = false;
     let sslPendingPaymentIds = [];
     const restocked = [];
+    let couponRestored = false;
     try {
       if (status === "cancelled" && order.paymentMethod === "cod") {
         codSnapshot = await Payment.findOne({ order: order._id, attemptNumber: 1 }, null, options);
@@ -168,6 +173,10 @@ export async function updateOrderStatus(id, status) {
           if (!result.matchedCount && !result.modifiedCount) throw new AppError("Could not restore stock for the cancelled order.", 500);
           restocked.push(item);
         }
+        if (order.couponCode) {
+          const couponResult = await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } }, options);
+          couponRestored = couponResult.modifiedCount > 0;
+        }
       }
       const savedOrder = await Order.findOneAndUpdate(
         { _id: order._id, status: order.status, paymentStatus: order.paymentStatus },
@@ -180,6 +189,7 @@ export async function updateOrderStatus(id, status) {
       if (session) throw error;
       const rollbackTasks = [];
       for (const item of restocked) rollbackTasks.push(Product.updateOne({ _id: item.product }, { $inc: { stock: -item.quantity } }));
+      if (couponRestored) rollbackTasks.push(Coupon.updateOne({ code: order.couponCode }, { $inc: { usedCount: 1 } }));
       if (order.paymentMethod === "cod" && codSnapshot) {
         rollbackTasks.push(codCreated
           ? Payment.deleteOne({ _id: codSnapshot._id, status: "cancelled" })
@@ -205,7 +215,10 @@ export async function assignDeliveryPartner(orderId, userId) {
   if (order.status === "pending") order.status = "confirmed";
   return order.save();
 }
-export const getAssignments = (partnerId) => Order.find({ deliveryPartner: partnerId, status: { $nin: ["cancelled", "delivered"] } }).sort({ createdAt: 1 }).populate("customer", "name phone").lean();
+export async function getAssignments(partnerId) {
+  const orders = await Order.find({ deliveryPartner: partnerId, status: { $ne: "cancelled" } }).sort({ createdAt: 1 }).populate("customer", "name phone").lean();
+  return orders.map((order) => ({ ...order, orderNumber: order.orderNumber || legacyOrderNumber(order), unreadForAdmin: unreadCount(order, "admin"), unreadForPartner: unreadCount(order, "deliveryPartner") }));
+}
 export async function getAssignment(partnerId, orderId) {
   const order = await Order.findOne({ _id: orderId, deliveryPartner: partnerId }).populate("customer", "name phone").lean();
   if (!order) throw new AppError("Delivery assignment not found.", 404);
@@ -217,6 +230,8 @@ function authorizedForOrder(order, user) {
 export async function listOrderMessages(user, orderId) {
   const order = await Order.findById(orderId).select("customer deliveryPartner messages").lean();
   if (!order || !authorizedForOrder(order, user)) throw new AppError("Order not found or unavailable to this account.", 404);
+  const seenField = user.role === "admin" ? "adminSeenAt" : user.role === "deliveryPartner" ? "partnerSeenAt" : null;
+  if (seenField) await Order.updateOne({ _id: orderId }, { $set: { [seenField]: new Date() } });
   return order.messages || [];
 }
 export async function createOrderMessage(user, orderId, input) {
@@ -246,6 +261,7 @@ export async function updateDeliveryStatus(partnerId, orderId, status) {
   const order = await Order.findOne({ _id: orderId, deliveryPartner: partnerId });
   if (!order) throw new AppError("Delivery assignment not found.", 404);
   if (!next[order.status] || next[order.status] !== status) throw new AppError("This status change is not allowed for the current delivery stage.", 409);
+  if (status === "delivered" && order.paymentMethod === "cod" && order.paymentStatus !== "paid") throw new AppError("Collect the cash before marking this order delivered.", 409);
   order.status = status;
   return order.save();
 }
@@ -315,4 +331,32 @@ export async function collectCodPayment(partnerId, orderId) {
       throw error;
     }
   });
+}
+function unreadCount(order, viewerRole) {
+  const seen = viewerRole === "admin" ? order.adminSeenAt : order.partnerSeenAt;
+  return (order.messages || []).filter((message) => message.role !== viewerRole && (!seen || new Date(message.at) > new Date(seen))).length;
+}
+export async function hasDeliveredOrderWithProduct(customerId, productId) {
+  return Boolean(await Order.exists({ customer: customerId, status: "delivered", "items.product": productId }));
+}
+// Gives stock (and the coupon use) back for a cancelled order. Used by both cancel paths.
+async function restoreReservedStock(order) {
+  await Product.bulkWrite(order.items.map((item) => ({ updateOne: { filter: { _id: item.product }, update: { $inc: { stock: item.quantity } } } })));
+  if (order.couponCode) await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } });
+}
+
+// Cancels only if the order is STILL in an allowed status and unpaid.
+// Check and change happen in one database step, so a double click cannot restore stock twice.
+// Returns null if someone else changed the order first.
+async function cancelOrder(filter, allowedStatuses) {
+  const order = await Order.findOneAndUpdate({ ...filter, status: { $in: allowedStatuses }, paymentStatus: { $ne: "paid" } }, { $set: { status: "cancelled" } }, { new: true });
+  if (order) await restoreReservedStock(order);
+  return order;
+}
+
+export async function cancelMyOrder(customerId, orderId) {
+  if (!/^[\da-f]{24}$/i.test(orderId || "")) throw new AppError("Order not found.", 404);
+  const order = await cancelOrder({ _id: orderId, customer: customerId }, ["pending"]);
+  if (!order) throw new AppError("Only orders that are still pending can be cancelled here. Please contact the shop for confirmed orders.", 409);
+  return order;
 }

@@ -48,7 +48,9 @@ export async function apiRequest(path, options = {}) {
   const result = await response.json()
 
   if (!response.ok || result.success === false) {
-    throw new Error(result.message || 'The request failed.')
+    const error = new Error(result.message || 'The request failed.')
+    error.code = result.code // for example EMAIL_NOT_VERIFIED
+    throw error
   }
 
   return result.data
@@ -70,8 +72,8 @@ async function uploadImageTo(file, endpoint) {
   return result.data.url
 }
 
-export function uploadImage(file) {
-  return uploadImageTo(file, '/uploads/images')
+export function uploadImage(file, kind = 'images') {
+  return uploadImageTo(file, `/uploads/${kind}`)
 }
 
 export function uploadReviewImage(file) {

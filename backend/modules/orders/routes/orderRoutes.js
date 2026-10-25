@@ -1,9 +1,8 @@
 import express from "express";
-import { allOrders, assignDelivery, createOrder, getOrderMessages, myOrder, myOrders, postOrderMessage, resolveOrderIssue, setOrderStatus, trackPublicOrder } from "../controllers/orderController.js";
+import { allOrders, assignDelivery, createOrder, getOrderMessages, myOrder, myOrders, postOrderMessage, resolveOrderIssue, setOrderStatus, cancelMine } from "../controllers/orderController.js";
 import { requireAuth } from "../../../middlewares/authMiddleware.js";
 import { requireRole } from "../../../middlewares/roleMiddleware.js";
 const router = express.Router();
-router.get("/track/:orderNumber", trackPublicOrder);
 router.use(requireAuth);
 router.post("/", requireRole("customer"), createOrder);
 router.get("/my", myOrders);
@@ -14,4 +13,5 @@ router.delete("/admin/:id/issue", requireRole("admin"), resolveOrderIssue);
 router.post("/admin/:id/assign-delivery", requireRole("admin"), assignDelivery);
 router.patch("/admin/:id/status", requireRole("admin"), setOrderStatus);
 router.get("/:id", myOrder);
+router.post("/:id/cancel", cancelMine);
 export default router;

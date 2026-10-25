@@ -16,6 +16,7 @@ const WishlistPage = lazy(() => import('./pages/WishlistPage.jsx'))
 const ComboPage = lazy(() => import('./pages/ComboPage.jsx'))
 const TrackPage = lazy(() => import('./pages/TrackPage.jsx'))
 const AccountPage = lazy(() => import('./pages/AccountPage.jsx'))
+const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage.jsx'))
 const AdminApp = lazy(() => import('./pages/admin/AdminApp.jsx'))
 const SkinAdvisorPage = lazy(() => import('./pages/SkinAdvisorPage.jsx'))
 const CustomerAccountPage = lazy(() =>  import('./pages/CustomerAccountPage.jsx'))
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="track" element={<TrackPage />} />
           <Route path="skin-advisor" element={<SkinAdvisorPage />} />
           <Route path="account" element={<AccountPage />} />
+          <Route path="verify-email" element={<VerifyEmailPage />} />
           <Route path="account/profile" element={<CustomerAccountPage />} />
           <Route path="wishlist" element={<WishlistPage />} />
           <Route path="cart" element={<CartPage />} />

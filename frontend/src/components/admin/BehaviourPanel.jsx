@@ -84,8 +84,8 @@ export default function BehaviourPanel() {
         const lines = cart.items.map((item) => ({ ...item, name: nameOf(item.id), price: productById.get(String(item.id))?.price ?? 0 }))
         return {
           userId: cart.userId,
-          name: user?.name ?? 'Guest visitor',
-          email: user?.email ?? 'not signed in',
+          name: user?.name ?? 'Staff or non-customer account',
+          email: user?.email ?? 'not a customer account',
           updatedAt: cart.updatedAt,
           lines,
           units: lines.reduce((sum, l) => sum + l.qty, 0),
@@ -150,14 +150,14 @@ export default function BehaviourPanel() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Avg. orders / customer" value={averages.orders.toFixed(1)} />
         <StatCard label="Avg. spend / customer" value={money(averages.spent)} accent="var(--color-rose)" />
-        <StatCard label="Avg. abandoned cart" value={money(averages.cart)} accent="#B3543D" />
+        <StatCard label="Avg. cart value" value={money(averages.cart)} accent="#B3543D" />
         <StatCard label="Avg. wishlist size" value={averages.wishlist.toFixed(1)} accent="var(--color-gold)" />
       </div>
 
       {/* the three boxes */}
       <div className="grid gap-3 sm:grid-cols-3">
         <SummaryBox active={view === 'customers'} onClick={() => setView('customers')} label="Signed-up customers" value={customers.length} accent="var(--color-ink)" hint="See each customer’s activity →" />
-        <SummaryBox active={view === 'carts'} onClick={() => setView('carts')} label="Abandoned carts" value={pricedCarts.length} accent="#B3543D" hint={`${money(abandonedValue)} waiting in carts →`} />
+        <SummaryBox active={view === 'carts'} onClick={() => setView('carts')} label="Waiting carts" value={pricedCarts.length} accent="#B3543D" hint={`${money(abandonedValue)} waiting in carts →`} />
         <SummaryBox active={view === 'wishlist'} onClick={() => setView('wishlist')} label="Total wishlist saves" value={wishlistSaves} accent="var(--color-gold)" hint="Most wishlisted products →" />
       </div>
 
@@ -241,7 +241,7 @@ export default function BehaviourPanel() {
           </div>
 
           <div className={`${card} p-6`}>
-            <h3 className="mb-1 font-serif text-lg">Abandoned carts</h3>
+            <h3 className="mb-1 font-serif text-lg">Waiting carts</h3>
             <p className="mb-4 text-[13px] text-ink-soft">People who left items in their cart. A good moment for a reminder or a coupon.</p>
             {pricedCarts.length === 0 ? (
               <p className="text-sm text-ink-soft">No abandoned carts. Nice!</p>

@@ -1,8 +1,26 @@
 import Product from "../../../models/Product.js";
 import Order from "../../../models/Order.js";
+import Review from "../../../models/Review.js";
+import { calculateRatingSummary } from "../../../utils/ratingCalculator.js";
 import AppError from "../../../utils/AppError.js";
 
 const publicFilter = { active: true };
+// Adds the real star average and review count (approved reviews only) to each product,
+// so shop cards, the home page and the product page all show the same numbers.
+async function withRatings(products) {
+  if (!products.length) return products;
+  const reviews = await Review.find({ product: { $in: products.map((product) => product._id) }, status: "approved" }).select("product rating").lean();
+  const ratingsByProduct = new Map();
+  for (const review of reviews) {
+    const key = String(review.product);
+    ratingsByProduct.set(key, [...(ratingsByProduct.get(key) || []), review.rating]);
+  }
+  return products.map((product) => {
+    const { average, count } = calculateRatingSummary(ratingsByProduct.get(String(product._id)) || []);
+    return { ...product, rating: average, reviews: count };
+  });
+}
+
 export async function listProducts(query) {
   const page = Math.max(1, Number.parseInt(query.page, 10) || 1);
   const limit = Math.min(60, Math.max(1, Number.parseInt(query.limit, 10) || 24));
@@ -12,7 +30,7 @@ export async function listProducts(query) {
   if (query.q?.trim()) filter.$text = { $search: query.q.trim() };
   const sort = ({ price_asc: { price: 1 }, price_desc: { price: -1 }, newest: { createdAt: -1 }, name: { name: 1 } })[query.sort] || { createdAt: -1 };
   const [data, total] = await Promise.all([Product.find(filter).sort(sort).skip((page - 1) * limit).limit(limit).select("-__v").lean(), Product.countDocuments(filter)]);
-  return { data, count: total, page, pages: Math.ceil(total / limit) };
+  return { data: await withRatings(data), count: total, page, pages: Math.ceil(total / limit) };
 }
 export async function listBestSellers() {
   const ranked = await Order.aggregate([
@@ -25,7 +43,7 @@ export async function listBestSellers() {
   if (!ranked.length) return [];
   const products = await Product.find({ _id: { $in: ranked.map((item) => item._id) }, active: true }).select("-__v").lean();
   const byId = new Map(products.map((product) => [String(product._id), product]));
-  return ranked.map((item) => byId.get(String(item._id))).filter(Boolean);
+  return withRatings(ranked.map((item) => byId.get(String(item._id))).filter(Boolean));
 }
 export async function listAdminProducts() {
   return Product.find().sort({ active: -1, brand: 1, name: 1 }).select("-__v").lean();
@@ -33,7 +51,7 @@ export async function listAdminProducts() {
 export async function getProduct(id) {
   const product = await Product.findOne({ $or: [{ _id: id.match(/^[\da-f]{24}$/i) ? id : null }, { slug: id }], active: true }).select("-__v").lean();
   if (!product) throw new AppError("Product not found.", 404);
-  return product;
+  return (await withRatings([product]))[0];
 }
 const cleanProductData = (data, partial = false) => {
   if (!data || typeof data !== "object" || Array.isArray(data)) throw new AppError("Product data must be an object.", 400);

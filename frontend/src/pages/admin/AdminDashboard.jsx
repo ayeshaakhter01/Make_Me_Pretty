@@ -41,6 +41,7 @@ export default function AdminDashboard({ session, onSignOut }) {
   const [salesReportLoading, setSalesReportLoading] = useState(true)
   const [salesReportError, setSalesReportError] = useState('')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [chatOrderId, setChatOrderId] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -69,7 +70,7 @@ export default function AdminDashboard({ session, onSignOut }) {
 
   useEffect(() => {
     let cancelled = false
-    Promise.all([apiRequest('/orders/admin/all'), apiRequest('/admin/users')])
+    const load = () => Promise.all([apiRequest('/orders/admin/all'), apiRequest('/admin/users')])
       .then(([savedOrders, userResult]) => {
         if (cancelled) return
         setOrders(savedOrders.map((order) => ({
@@ -87,14 +88,17 @@ export default function AdminDashboard({ session, onSignOut }) {
           status: ['pending', 'confirmed', 'shipped', 'outForDelivery', 'delivered', 'cancelled'].indexOf(order.status),
           partner: order.deliveryPartner?._id || '',
           partnerName: order.deliveryPartner?.name || '',
-          messageCount: order.messageCount || 0,
+          messageCount: order.messages?.length || 0,
+          unread: order.unreadForAdmin || 0,
           isDemo: Boolean(order.isDemo),
         })))
         setPartners((userResult.users || []).filter((user) => user.role === 'deliveryPartner').map((user) => ({ id: user.id, name: user.name, phone: user.phone || '' })))
         setOrdersError('')
       })
       .catch((problem) => { if (!cancelled) setOrdersError(problem.message) })
-    return () => { cancelled = true }
+    load()
+    const timer = window.setInterval(load, 15000)
+    return () => { cancelled = true; window.clearInterval(timer) }
   }, [setOrders, setPartners])
 
   useEffect(() => {
@@ -114,7 +118,6 @@ export default function AdminDashboard({ session, onSignOut }) {
     return () => { cancelled = true }
   }, [])
 
-  
   useEffect(() => {
     let cancelled = false
 
@@ -152,9 +155,18 @@ export default function AdminDashboard({ session, onSignOut }) {
     }
   }, [])
 
+  /* the products are needed on every tab for the "Low-stock alerts" box */
+  useEffect(() => {
+    let cancelled = false
+    apiRequest('/products/admin/all')
+      .then((result) => { if (!cancelled) setProducts(result.map((p) => ({ ...p, id: p._id, old: p.compareAt, desc: p.description, ing: p.ingredients || [] }))) })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [])
 
   /* orders where a delivery partner reported a problem */
   const issues = orders.filter((order) => order.issue)
+  const withNew = orders.filter((order) => order.unread > 0)
 
   return (
     <div className="min-h-screen bg-ivory">
@@ -170,15 +182,29 @@ export default function AdminDashboard({ session, onSignOut }) {
 
           {accountOpen && <StaffAccountPanel />}
 
-
-          {issues.length > 0 && (
-            <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl bg-lowstock-bg px-5 py-3 text-sm text-lowstock-text">
-              <span>{issues.length} delivery {issues.length === 1 ? 'problem needs' : 'problems need'} your attention ({issues.map((order) => order.id).join(', ')}).</span>
-              <button type="button" onClick={() => setTab('Orders')} className="underline">Open orders</button>
+          {(issues.length > 0 || withNew.length > 0) && (
+            <div className="mb-6 grid gap-2">
+              {issues.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-lowstock-bg px-5 py-3 text-sm text-lowstock-text">
+                  <span>{issues.length} delivery {issues.length === 1 ? 'problem needs' : 'problems need'} your attention:</span>
+                  {issues.map((order) => (
+                    <button key={order.id} type="button" onClick={() => { setTab('Orders'); setChatOrderId(order.id) }} className="rounded-full bg-white/60 px-3 py-1 text-xs font-semibold underline">{order.orderNumber || order.id}</button>
+                  ))}
+                </div>
+              )}
+              {withNew.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-pink-soft px-5 py-3 text-sm text-ink-soft">
+                  <span>New messages from delivery partners:</span>
+                  {withNew.map((order) => (
+                    <button key={order.id} type="button" onClick={() => { setTab('Orders'); setChatOrderId(order.id) }} className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-rose-deep underline">{order.orderNumber || order.id} ({order.unread})</button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {ordersError && <p role="alert" className="mb-4 text-sm text-lowstock-text">Could not load live orders and delivery partners: {ordersError}</p>}
+
           {(tab === 'Orders' || tab === 'Analytics') && (
             <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
               <StatCard label="Revenue (received)" value={salesReportLoading ? 'Loading…' : salesReportError ? 'Unavailable' : money(salesReport?.summary?.receivedRevenue || 0)} accent="var(--color-rose)" />
@@ -188,7 +214,7 @@ export default function AdminDashboard({ session, onSignOut }) {
             </div>
           )}
 
-          {tab === 'Orders' && <OrdersTable orders={orders} setOrders={setOrders} partners={partners} />}
+          {tab === 'Orders' && <OrdersTable orders={orders} setOrders={setOrders} partners={partners} openChatId={chatOrderId} onChatOpened={() => setChatOrderId(null)} />}
           {tab === 'Inventory' && <InventoryManager products={products} setProducts={setProducts} />}
           {tab === 'Behaviour' && <BehaviourPanel />}
           {tab === 'Analytics' && <AnalyticsPanel report={salesReport} loading={salesReportLoading} error={salesReportError} />}

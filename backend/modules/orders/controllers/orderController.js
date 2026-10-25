@@ -6,7 +6,7 @@ export const myOrder = respond((req) => service.getMyOrder(req.user._id, req.par
 export const allOrders = respond(() => service.getAllOrders());
 export const setOrderStatus = respond((req) => service.updateOrderStatus(req.params.id, req.body.status));
 export const assignDelivery = respond((req) => service.assignDeliveryPartner(req.params.id, req.body.deliveryPartnerId));
-export const trackPublicOrder = respond((req) => service.trackOrder(req.params.orderNumber, req.query.phone || ""));
 export const getOrderMessages = respond((req) => service.listOrderMessages(req.user, req.params.id));
 export const postOrderMessage = respond((req) => service.createOrderMessage(req.user, req.params.id, req.body), 201);
 export const resolveOrderIssue = respond((req) => service.resolveOrderIssue(req.params.id));
+export const cancelMine = respond((req) => service.cancelMyOrder(req.user._id, req.params.id));

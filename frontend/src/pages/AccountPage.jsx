@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import PageContainer from '../components/ui/PageContainer.jsx'
 import { apiRequest, clearAuthSession, loadAuthSession, saveAuthSession } from '../api.js'
 import { useNavigate } from 'react-router-dom'
+import ResendVerification, { SandboxLink } from '../components/account/ResendVerification.jsx'
 
 export default function AccountPage() {
   const [mode, setMode] = useState('signin')
@@ -9,6 +10,8 @@ export default function AccountPage() {
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [staffSession, setStaffSession] = useState(null)
+  const [pendingSignup, setPendingSignup] = useState(null) // { email, sandboxLink } after a new sign-up
+  const [unverifiedEmail, setUnverifiedEmail] = useState('') // set when sign-in is blocked: email not verified yet
 
   const [signIn, setSignIn] = useState({ email: '', password: '' })
   const [signUp, setSignUp] = useState({ name: '', email: '', password: '' })
@@ -24,12 +27,15 @@ export default function AccountPage() {
   function changeMode(nextMode) {
     setMode(nextMode)
     setMessage('')
+    setUnverifiedEmail('')
+    setPendingSignup(null)
     setShowPassword(false)
   }
 
   async function handleSubmit(event) {
     event.preventDefault()
     setMessage('')
+    setUnverifiedEmail('')
     setIsSubmitting(true)
 
     try {
@@ -42,19 +48,23 @@ export default function AccountPage() {
         },
       )
 
+      if (isSignUp) {
+        // New customers must verify their email first, so there is no session yet.
+        setPendingSignup({ email: result.email, sandboxLink: result.sandboxLink || '' })
+        setSignUp({ name: '', email: '', password: '' })
+        return
+      }
+
       saveAuthSession({ user: result.user, token: result.token })
       if (result.user.role !== 'customer') {
         setMessage('This is a staff account. Please sign in at /admin.')
         return
       }
       navigate('/account/profile')
-      setMessage(
-        isSignUp
-          ? 'Account created and signed in successfully!'
-          : 'Signed in successfully!',
-      )
+      setMessage('Signed in successfully!')
     } catch (error) {
       setMessage(error.message)
+      if (error.code === 'EMAIL_NOT_VERIFIED') setUnverifiedEmail(signIn.email.trim())
     } finally {
       setIsSubmitting(false)
     }
@@ -93,7 +103,14 @@ export default function AccountPage() {
           ))}
         </div>
 
-        <form
+        {pendingSignup ? <div role="status" className="grid gap-3 rounded-3xl border border-line bg-cream p-6 text-center">
+          <p className="text-3xl text-rose" aria-hidden="true">✿</p>
+          <h2 className="font-serif text-2xl">Check your email</h2>
+          <p className="text-sm text-ink-soft">We sent a verification link to <strong>{pendingSignup.email}</strong>. Click it to finish creating your account, then sign in.</p>
+          {pendingSignup.sandboxLink && <SandboxLink href={pendingSignup.sandboxLink} />}
+          <ResendVerification email={pendingSignup.email} className="justify-items-center" />
+          <button type="button" onClick={() => changeMode('signin')} className="text-sm text-rose-deep underline">Back to Sign In</button>
+        </div> : <form
           onSubmit={handleSubmit}
           className="grid gap-4 rounded-3xl border border-line bg-cream p-6"
         >
@@ -179,6 +196,7 @@ export default function AccountPage() {
               {message}
             </p>
           )}
+          {unverifiedEmail && <ResendVerification email={unverifiedEmail} />}
 
           <button
             type="submit"
@@ -191,7 +209,7 @@ export default function AccountPage() {
                 ? 'Sign In'
                 : 'Create Account'}
           </button>
-        </form>
+        </form>}
       </div>
     </PageContainer>
   )
