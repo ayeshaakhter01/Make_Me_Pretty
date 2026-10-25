@@ -38,12 +38,12 @@ export function CartProvider({ children }) {
       const serverCartIds = new Set((savedCart.items || []).map((row) => String(row.product?._id || '')))
       for (const row of guestCart) {
         const id = productId(row.product)
-        if (isDatabaseId(id) && !serverCartIds.has(id)) await apiRequest('/cart/items', { method: 'POST', body: JSON.stringify({ productId: id, quantity: row.quantity }) })
+        if (isDatabaseId(id) && !serverCartIds.has(id)) await apiRequest('/cart/items', { method: 'POST', body: JSON.stringify({ productId: id, quantity: row.quantity }) }).catch(() => undefined)
       }
       const serverWishlistIds = new Set((savedWishlist.products || []).map((product) => String(product._id)))
       for (const product of guestWishlist) {
         const id = productId(product)
-        if (isDatabaseId(id) && !serverWishlistIds.has(id)) await apiRequest('/wishlist/items', { method: 'POST', body: JSON.stringify({ productId: id }) })
+        if (isDatabaseId(id) && !serverWishlistIds.has(id)) await apiRequest('/wishlist/items', { method: 'POST', body: JSON.stringify({ productId: id }) }).catch(() => undefined)
       }
       localStorage.removeItem(cartKey(null))
       localStorage.removeItem(wishlistKey(null))
