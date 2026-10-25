@@ -241,7 +241,7 @@ export default function BehaviourPanel() {
           </div>
 
           <div className={`${card} p-6`}>
-            <h3 className="mb-1 font-serif text-lg">Abandoned carts</h3>
+            <h3 className="mb-1 font-serif text-lg">Waiting carts</h3>
             <p className="mb-4 text-[13px] text-ink-soft">People who left items in their cart. A good moment for a reminder or a coupon.</p>
             {pricedCarts.length === 0 ? (
               <p className="text-sm text-ink-soft">No abandoned carts. Nice!</p>
