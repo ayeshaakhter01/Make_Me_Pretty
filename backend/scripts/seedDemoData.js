@@ -6,6 +6,7 @@ import Order from "../models/Order.js";
 import Review from "../models/Review.js";
 import Cart from "../models/Cart.js";
 import Wishlist from "../models/Wishlist.js";
+import { makeOrderNumber } from "../modules/orders/services/orderService.js";
 
 const password = process.env.DEMO_ACCOUNT_PASSWORD || "MmpDemo2026!";
 if (!process.env.MONGODB_URI) throw new Error("Set MONGODB_URI in backend/.env.");
@@ -40,10 +41,12 @@ try {
   if (products.length < 12) throw new Error(`Need at least 12 active catalog products; found ${products.length}. Seed catalog first.`);
 
   let ordersCreated = 0;
+  const existingDemoOrders = await Order.countDocuments({ isDemo: true });
   const statuses = ["delivered", "delivered", "shipped", "confirmed", "delivered", "pending", "outForDelivery", "delivered", "cancelled", "shipped", "delivered", "confirmed", "delivered", "pending", "shipped", "delivered", "confirmed", "delivered", "outForDelivery", "shipped", "delivered", "cancelled", "confirmed", "delivered", "pending", "delivered", "shipped", "confirmed", "delivered", "outForDelivery"];
   for (let index = 0; index < statuses.length; index += 1) {
-    const orderNumber = `MMP-DEMO-${String(index + 1).padStart(4, "0")}`;
-    if (await Order.exists({ orderNumber })) continue;
+    const createdAt = new Date(Date.now() - (index * 2 + 1) * 24 * 60 * 60 * 1000);
+    const orderNumber = makeOrderNumber(createdAt);
+    if (existingDemoOrders > 0) continue;
     const customer = customers[index % customers.length];
     const product = products[(index * 7) % products.length];
     const address = customer.addresses[0];
@@ -65,7 +68,7 @@ try {
       paymentStatus: delivered ? "paid" : "unpaid",
       status,
       isDemo: true,
-      createdAt: new Date(Date.now() - (index * 2 + 1) * 24 * 60 * 60 * 1000),
+      createdAt,
     });
     if (status !== "cancelled") await Product.updateOne({ _id: product._id, stock: { $gte: quantity } }, { $inc: { stock: -quantity } });
     ordersCreated += 1;

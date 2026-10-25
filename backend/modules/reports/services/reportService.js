@@ -12,7 +12,7 @@ export async function behaviourReport() {
     Order.find().select("customer orderNumber status total createdAt items").sort({ createdAt: -1 }).limit(5000).lean(),
     Cart.find().populate("customer", "name email").populate("items.product", "name").limit(1000).lean(),
     Wishlist.find().populate("customer", "name email").populate("products", "name").limit(1000).lean(),
-    Product.find({ active: true }).select("name price").lean(),
+    Product.find({ active: true }).select("name price type").lean(),
   ]);
   const statusIndex = { pending: 0, confirmed: 1, shipped: 2, outForDelivery: 3, delivered: 4, cancelled: 5 };
   return {

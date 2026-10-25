@@ -3,6 +3,7 @@ import { Autoplay, EffectCoverflow, Pagination } from 'swiper/modules'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { imageSrc } from '../admin/imageHelpers.js'
 import Reveal from '../ui/Reveal.jsx'
+import { apiRequest } from '../../api.js'
 
 function BlogReader({ post, onClose }) {
   const [progress, setProgress] = useState(0)
@@ -35,28 +36,7 @@ export default function BlogSection() {
 
     async function fetchBlogs() {
       try {
-        const response = await fetch('http://localhost:5000/api/blogs')
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch blog posts')
-        }
-
-        
-        const data = await response.json()
-
-        const blogList = Array.isArray(data)
-          ? data
-          : Array.isArray(data.blogs)
-            ? data.blogs
-            : Array.isArray(data.data)
-              ? data.data
-              : Array.isArray(data.posts)
-                ? data.posts
-                : null
-
-        if (!blogList) {
-          throw new Error('Unexpected blog API response format')
-        }
+        const blogList = await apiRequest('/blogs')
 
 
         if (!cancelled) {

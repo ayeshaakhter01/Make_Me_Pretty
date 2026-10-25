@@ -7,6 +7,7 @@ import {
   createBannerRecord,
   updateBannerRecord,
   deleteBannerRecord,
+  reorderBannerRecords,
 } from "../controllers/bannerController.js";
 
 const router = express.Router();
@@ -18,6 +19,7 @@ router.get("/", getBanners);
 router.use(requireAuth, requireRole("admin"));
 router.get("/admin/all", getAllAdminBanners);
 router.post("/", createBannerRecord);
+router.patch("/reorder", reorderBannerRecords);
 router.patch("/:id", updateBannerRecord);
 router.delete("/:id", deleteBannerRecord);
 

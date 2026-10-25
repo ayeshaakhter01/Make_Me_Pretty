@@ -1,10 +1,19 @@
+import { useState } from 'react'
 import Modal from './Modal.jsx'
 import { ORDER_STATUSES, money, roseButton } from './adminHelpers.js'
+import { downloadInvoicePdf } from './invoicePdf.js'
 
-/* Pop-up invoice for one order. "Print" opens the browser's print / save-as-PDF window. */
+/* Pop-up invoice for one order. The button downloads a one-page PDF. */
 export default function OrderInvoice({ order, onClose }) {
+  const [busy, setBusy] = useState(false)
+
+  async function download() {
+    setBusy(true)
+    try { await downloadInvoicePdf(order) } catch (error) { window.alert(error.message || 'Could not create the PDF.') } finally { setBusy(false) }
+  }
+
   return (
-    <Modal title={`Invoice ${order.id}`} onClose={onClose}>
+    <Modal title={`Invoice ${order.orderNumber || order.id}`} onClose={onClose}>
       <div className="grid gap-1 text-sm text-ink-soft">
         <div><span className="text-ink">{order.name}</span> · {order.phone}</div>
         <div>{order.address}</div>
@@ -32,7 +41,7 @@ export default function OrderInvoice({ order, onClose }) {
       </table>
       <div className="mt-3 flex justify-between font-medium"><span>Total</span><span>{money(order.total)}</span></div>
 
-      <button type="button" onClick={() => window.print()} className={`${roseButton} mt-5`}>Print / save as PDF</button>
+      <button type="button" onClick={download} disabled={busy} className={`${roseButton} mt-5`}>{busy ? 'Preparing…' : 'Download invoice (PDF)'}</button>
     </Modal>
   )
 }

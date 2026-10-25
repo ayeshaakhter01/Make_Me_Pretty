@@ -4,10 +4,12 @@ import {
   createBanner,
   updateBanner,
   deleteBanner,
+  reorderBanners,
 } from "../services/bannerService.js";
 
 import validateBanner from "../../../validators/bannerValidator.js";
 import { sendValidationError, sendNotFound } from "../../../utils/responseHelpers.js";
+import { isObjectIdList } from "../../../utils/validationHelpers.js";
 
 export const getBanners = async (req, res, next) => {
   try {
@@ -95,6 +97,19 @@ export const deleteBannerRecord = async (req, res, next) => {
       message: "Banner deleted successfully",
       data: banner,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const reorderBannerRecords = async (req, res, next) => {
+  try {
+    const ids = req.body?.ids;
+    if (!isObjectIdList(ids)) {
+      return sendValidationError(res, "Banner validation failed", ["ids must be a non-empty list of banner ids"]);
+    }
+    await reorderBanners(ids);
+    res.status(200).json({ success: true, message: "Banner order saved" });
   } catch (error) {
     next(error);
   }

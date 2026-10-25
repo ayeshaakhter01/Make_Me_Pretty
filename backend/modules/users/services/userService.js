@@ -1,4 +1,7 @@
 import User from "../../../models/User.js";
+import Order from "../../../models/Order.js";
+import Cart from "../../../models/Cart.js";
+import Wishlist from "../../../models/Wishlist.js";
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -172,6 +175,11 @@ export async function removeUser(userId, actorId) {
     }
   }
 
+  if (user.role === "deliveryPartner" && await Order.exists({ deliveryPartner: user._id, status: { $in: ["confirmed", "shipped", "outForDelivery"] } })) {
+    throw createError("This delivery partner still has active orders. Reassign them first.", 409);
+  }
+  await Promise.all([Cart.deleteOne({ customer: user._id }), Wishlist.deleteOne({ customer: user._id })]);
+  
   await user.deleteOne();
 
   return { id: userId };
