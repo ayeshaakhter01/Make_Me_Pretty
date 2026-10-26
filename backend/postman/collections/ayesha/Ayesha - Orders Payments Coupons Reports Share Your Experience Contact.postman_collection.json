@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Ayesha - Orders Payments Coupons Reports",
-    "description": "Make Me Pretty API requests grouped into Setup, Orders/COD, SSLCommerz Payments, Coupons, Reports, Share Your Experience, and Contact messages.",
+    "description": "Make Me Pretty API requests grouped into Setup, Orders/COD, SSLCommerz Payments, Coupons, Reports, Share Your Experience, and Contact messages. Optional delivery, other-customer ownership, ineligible review, and real SSLCommerz callback checks skip when prerequisites are missing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -183,8 +183,16 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Delivery partner credentials authenticate', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) pm.collectionVariables.set('deliveryPartnerToken', pm.response.json().data.token);"
+                  "if (pm.response.code === 200) {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.test('Delivery partner credentials authenticate', () => pm.response.to.have.status(200));",
+                  "  pm.test('Logged-in account has deliveryPartner role', () => pm.expect(data.user.role).to.eql('deliveryPartner'));",
+                  "  pm.collectionVariables.set('deliveryPartnerToken', data.token);",
+                  "  pm.collectionVariables.set('deliveryPartnerId', data.user.id);",
+                  "} else {",
+                  "  console.warn('Optional delivery account could not log in; delivery-only requests will be skipped.');",
+                  "  pm.test('Delivery login is optional when no valid delivery account is configured', () => pm.expect(pm.response.code).to.eql(401));",
+                  "}"
                 ]
               }
             }
@@ -1400,6 +1408,18 @@
                   "const callbackLocation=new URL(pm.response.headers.get('Location')||'http://localhost');const callbackOrderId=callbackLocation.searchParams.get('orderId');pm.test('Redirect result is failure',()=>pm.expect(callbackLocation.searchParams.get('result')).to.eql('failure'));if(callbackOrderId){pm.collectionVariables.set('sslFailedOrderId',callbackOrderId);pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+callbackOrderId,method:'GET',header:{Authorization:'Bearer '+pm.collectionVariables.get('customerToken')}},(error,response)=>{pm.test('failed callback order status can be checked by its owner',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Server verified failed payment status',()=>pm.expect(response.json().data.paymentStatus).to.eql('failed'));});}else pm.test('Callback includes an order reference for status lookup',()=>pm.expect(callbackOrderId).to.be.a('string'));"
                 ]
               }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('sslCommerzEnabled') !== 'true' || !(pm.collectionVariables.get('sslFailedTransactionId') || '')) {",
+                  "  console.warn('Manual SSLCommerz test skipped: sandbox is disabled or transaction ID is empty.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
             }
           ]
         },
@@ -1445,6 +1465,18 @@
                   "const callbackLocation=new URL(pm.response.headers.get('Location')||'http://localhost');const callbackOrderId=callbackLocation.searchParams.get('orderId');pm.test('Redirect result is cancelled',()=>pm.expect(callbackLocation.searchParams.get('result')).to.eql('cancelled'));if(callbackOrderId){pm.collectionVariables.set('sslCancelledOrderId',callbackOrderId);pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+callbackOrderId,method:'GET',header:{Authorization:'Bearer '+pm.collectionVariables.get('customerToken')}},(error,response)=>{pm.test('cancelled callback order status can be checked by its owner',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Server verified cancelled payment status',()=>pm.expect(response.json().data.paymentStatus).to.eql('cancelled'));});}else pm.test('Callback includes an order reference for status lookup',()=>pm.expect(callbackOrderId).to.be.a('string'));"
                 ]
               }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('sslCommerzEnabled') !== 'true' || !(pm.collectionVariables.get('sslCancelledTransactionId') || '')) {",
+                  "  console.warn('Manual SSLCommerz test skipped: sandbox is disabled or transaction ID is empty.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
             }
           ]
         },
@@ -1479,6 +1511,18 @@
                   "pm.test('SSLCommerz validates the transaction server-side',()=>pm.response.to.have.status(200));pm.test('IPN acknowledges verified callback',()=>pm.expect(pm.response.text()).to.eql('OK'));"
                 ]
               }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('sslCommerzEnabled') !== 'true' || !(pm.collectionVariables.get('sslTransactionId') || '')) {",
+                  "  console.warn('Manual SSLCommerz test skipped: sandbox is disabled or transaction ID is empty.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
             }
           ]
         },
@@ -1511,6 +1555,18 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Repeated verified IPN is acknowledged safely',()=>pm.response.to.have.status(200));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('sslCommerzEnabled') !== 'true' || !(pm.collectionVariables.get('sslTransactionId') || '')) {",
+                  "  console.warn('Duplicate verified IPN skipped: no configured SSLCommerz sandbox transaction.');",
+                  "  pm.execution.skipRequest();",
+                  "}"
                 ]
               }
             }
@@ -1580,6 +1636,16 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Order ownership is enforced',()=>pm.expect([404,503]).to.include(pm.response.code));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const id = pm.collectionVariables.get('otherCustomerOrderId') || '';",
+                  "if (!/^[a-f0-9]{24}$/i.test(id)) { console.warn('Ownership test skipped: set otherCustomerOrderId to a real order owned by another customer.'); pm.execution.skipRequest(); }"
                 ]
               }
             }
@@ -2360,7 +2426,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.unset('reviewTestId');"
+                  "pm.collectionVariables.unset('reviewTestId');",
+                  "pm.collectionVariables.unset('reviewSubmissionIneligible');"
                 ]
               }
             },
@@ -2369,8 +2436,17 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Review is created or correctly rejected as an existing duplicate',()=>pm.expect([201,409]).to.include(pm.response.code));",
-                  "if(pm.response.code===201){const d=pm.response.json().data;pm.collectionVariables.set('reviewTestId',d._id);pm.test('New review starts pending and is server-linked to customer',()=>{pm.expect(d.status).to.eql('pending');pm.expect(d.customer).to.exist;});}"
+                  "if (pm.response.code === 403) {",
+                  "  pm.collectionVariables.set('reviewSubmissionIneligible', 'true');",
+                  "  pm.test('Review is correctly blocked when customer has no delivered order for this product', () => pm.response.to.have.status(403));",
+                  "} else {",
+                  "  pm.test('Review is created or correctly rejected as an existing duplicate', () => pm.expect([201, 409]).to.include(pm.response.code));",
+                  "  if (pm.response.code === 201) {",
+                  "    const d = pm.response.json().data;",
+                  "    pm.collectionVariables.set('reviewTestId', d._id);",
+                  "    pm.test('New review starts pending and is server-linked to customer', () => { pm.expect(d.status).to.eql('pending'); pm.expect(d.customer).to.exist; });",
+                  "  }",
+                  "}"
                 ]
               }
             }
@@ -2445,6 +2521,15 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Unique customer-product review constraint returns 409',()=>pm.response.to.have.status(409));"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.collectionVariables.get('reviewSubmissionIneligible') === 'true') { console.warn('Duplicate-review request skipped because the customer is not eligible for this product review.'); pm.execution.skipRequest(); }"
                 ]
               }
             }
@@ -2698,8 +2783,8 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Honeypot gets a quiet accepted response',()=>pm.response.to.have.status(202));",
-                  "if(pm.response.code===202)pm.test('Response does not expose whether message was stored',()=>pm.expect(pm.response.json().data.accepted).to.eql(true));"
+                  "pm.test('Honeypot is quietly accepted without creating a stored message', () => pm.response.to.have.status(202));",
+                  "if (pm.response.code === 202) pm.test('Response does not expose whether message was stored', () => pm.expect(pm.response.json().data.accepted).to.eql(true));"
                 ]
               }
             }
@@ -3126,6 +3211,34 @@
       "key": "contactMessageTestId",
       "value": "",
       "type": "string"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const name = pm.info.requestName;",
+          "const deliverySteps = new Set(['Assign COD order to delivery partner (admin)', 'Advance assigned order to shipped (delivery partner)', 'Advance assigned order to out for delivery', 'Customer cannot confirm COD collection', 'Confirm COD collected (assigned delivery partner)', 'Repeat COD collection confirmation', 'Unassigned delivery partner cannot collect COD']);",
+          "const sslManualSteps = new Set(['Failure callback for real sandbox failed transaction (manual)', 'Cancellation callback for real sandbox cancelled transaction (manual)', 'Verify completed sandbox payment via IPN (manual)']);",
+          "if (name === 'Login delivery partner') {",
+          "  pm.collectionVariables.unset('deliveryPartnerToken');",
+          "  pm.collectionVariables.unset('deliveryPartnerId');",
+          "  const email = (pm.collectionVariables.get('deliveryEmail') || '').trim();",
+          "  const password = pm.collectionVariables.get('deliveryPassword') || '';",
+          "  if (!email || !password) { console.warn('Optional delivery login skipped: deliveryEmail/deliveryPassword are blank.'); pm.execution.skipRequest(); }",
+          "}",
+          "if (deliverySteps.has(name) && (!(pm.collectionVariables.get('deliveryPartnerToken') || '') || !(pm.collectionVariables.get('deliveryPartnerId') || ''))) {",
+          "  console.warn('Optional delivery test skipped: login token or deliveryPartnerId is missing.');",
+          "  pm.execution.skipRequest();",
+          "}",
+          "if (sslManualSteps.has(name) && (pm.collectionVariables.get('sslCommerzEnabled') !== 'true' || !(pm.collectionVariables.get(name.startsWith('Failure') ? 'sslFailedTransactionId' : name.startsWith('Cancellation') ? 'sslCancelledTransactionId' : 'sslTransactionId') || ''))) {",
+          "  console.warn('Manual SSLCommerz callback skipped: sandbox is not enabled or no real sandbox transaction ID is set.');",
+          "  pm.execution.skipRequest();",
+          "}"
+        ]
+      }
     }
   ]
 }
