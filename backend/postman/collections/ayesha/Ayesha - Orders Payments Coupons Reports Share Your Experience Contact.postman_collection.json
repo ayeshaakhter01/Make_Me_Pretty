@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Ayesha - Orders Payments Coupons Reports",
-    "description": "Make Me Pretty API Postman checks. Select the shared Local environment before running requests. Start with 0 Setup, then run any module folder. SSLCommerz checks use the configured sandbox; redirects alone are not proof of payment.",
+    "description": "Make Me Pretty API requests grouped into Setup, Orders/COD, SSLCommerz Payments, Coupons, Reports, Share Your Experience, and Contact messages.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -75,7 +75,7 @@
               "script": {
                 "exec": [
                   "pm.test('Customer login succeeds', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) { pm.environment.set('customerToken', pm.response.json().data.token); }"
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('customerToken', pm.response.json().data.token); }"
                 ]
               }
             }
@@ -116,32 +116,11 @@
               "script": {
                 "exec": [
                   "pm.test('Catalog endpoint returns success', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) { const page = pm.response.json().data; pm.test('Product listing has the documented response shape', () => pm.expect(page.data).to.be.an('array')); const product = page.data?.find((item) => Number(item.stock) > 0); if (product && !pm.environment.get('productId')) pm.environment.set('productId', product._id); }"
+                  "if (pm.response.code === 200) { const page = pm.response.json().data; pm.test('Product listing has the documented response shape', () => pm.expect(page.data).to.be.an('array')); const product = page.data?.find((item) => Number(item.stock) > 0); if (product && !pm.collectionVariables.get('productId')) pm.collectionVariables.set('productId', product._id); }"
                 ]
               }
             }
           ]
-        },
-        {
-          "name": "Add item to cart",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{customerToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"quantity\": 1\n}"
-            },
-            "url": "{{baseUrl}}/api/cart/items"
-          }
         },
         {
           "name": "Login admin",
@@ -171,7 +150,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Admin credentials authenticate', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) pm.environment.set('adminToken', pm.response.json().data.token);"
+                  "if (pm.response.code === 200) pm.collectionVariables.set('adminToken', pm.response.json().data.token);"
                 ]
               }
             }
@@ -205,7 +184,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Delivery partner credentials authenticate', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) pm.environment.set('deliveryPartnerToken', pm.response.json().data.token);"
+                  "if (pm.response.code === 200) pm.collectionVariables.set('deliveryPartnerToken', pm.response.json().data.token);"
                 ]
               }
             }
@@ -737,7 +716,7 @@
           ]
         },
         {
-          "name": "Track COD order publicly",
+          "name": "Public order tracking now requires login (401)",
           "request": {
             "method": "GET",
             "header": [],
@@ -749,7 +728,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Public tracking lookup succeeds',()=>pm.response.to.have.status(200));"
+                  "pm.test('Tracking without a login is rejected (401)',()=>pm.response.to.have.status(401));"
                 ]
               }
             }
@@ -1418,7 +1397,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Verified failed callback redirects to the payment result page',()=>pm.response.to.have.status(303));",
-                  "const callbackLocation=new URL(pm.response.headers.get('Location')||'http://localhost');const callbackOrderId=callbackLocation.searchParams.get('orderId');pm.test('Redirect result is failure',()=>pm.expect(callbackLocation.searchParams.get('result')).to.eql('failure'));if(callbackOrderId){pm.collectionVariables.set('sslFailedOrderId',callbackOrderId);pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+callbackOrderId,method:'GET',header:{Authorization:'Bearer '+pm.environment.get('customerToken')}},(error,response)=>{pm.test('failed callback order status can be checked by its owner',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Server verified failed payment status',()=>pm.expect(response.json().data.paymentStatus).to.eql('failed'));});}else pm.test('Callback includes an order reference for status lookup',()=>pm.expect(callbackOrderId).to.be.a('string'));"
+                  "const callbackLocation=new URL(pm.response.headers.get('Location')||'http://localhost');const callbackOrderId=callbackLocation.searchParams.get('orderId');pm.test('Redirect result is failure',()=>pm.expect(callbackLocation.searchParams.get('result')).to.eql('failure'));if(callbackOrderId){pm.collectionVariables.set('sslFailedOrderId',callbackOrderId);pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+callbackOrderId,method:'GET',header:{Authorization:'Bearer '+pm.collectionVariables.get('customerToken')}},(error,response)=>{pm.test('failed callback order status can be checked by its owner',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Server verified failed payment status',()=>pm.expect(response.json().data.paymentStatus).to.eql('failed'));});}else pm.test('Callback includes an order reference for status lookup',()=>pm.expect(callbackOrderId).to.be.a('string'));"
                 ]
               }
             }
@@ -1463,7 +1442,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Verified cancelled callback redirects to the payment result page',()=>pm.response.to.have.status(303));",
-                  "const callbackLocation=new URL(pm.response.headers.get('Location')||'http://localhost');const callbackOrderId=callbackLocation.searchParams.get('orderId');pm.test('Redirect result is cancelled',()=>pm.expect(callbackLocation.searchParams.get('result')).to.eql('cancelled'));if(callbackOrderId){pm.collectionVariables.set('sslCancelledOrderId',callbackOrderId);pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+callbackOrderId,method:'GET',header:{Authorization:'Bearer '+pm.environment.get('customerToken')}},(error,response)=>{pm.test('cancelled callback order status can be checked by its owner',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Server verified cancelled payment status',()=>pm.expect(response.json().data.paymentStatus).to.eql('cancelled'));});}else pm.test('Callback includes an order reference for status lookup',()=>pm.expect(callbackOrderId).to.be.a('string'));"
+                  "const callbackLocation=new URL(pm.response.headers.get('Location')||'http://localhost');const callbackOrderId=callbackLocation.searchParams.get('orderId');pm.test('Redirect result is cancelled',()=>pm.expect(callbackLocation.searchParams.get('result')).to.eql('cancelled'));if(callbackOrderId){pm.collectionVariables.set('sslCancelledOrderId',callbackOrderId);pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+callbackOrderId,method:'GET',header:{Authorization:'Bearer '+pm.collectionVariables.get('customerToken')}},(error,response)=>{pm.test('cancelled callback order status can be checked by its owner',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Server verified cancelled payment status',()=>pm.expect(response.json().data.paymentStatus).to.eql('cancelled'));});}else pm.test('Callback includes an order reference for status lookup',()=>pm.expect(callbackOrderId).to.be.a('string'));"
                 ]
               }
             }
@@ -1643,14 +1622,13 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Invalid provider validation reference is rejected',()=>pm.response.to.have.status(409));",
-                  "pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+pm.collectionVariables.get('sslOrderId'),method:'GET',header:{Authorization:'Bearer '+pm.environment.get('customerToken')}},(error,response)=>{pm.test('Order status is readable after invalid callback',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Forged callback status did not mark the payment paid',()=>pm.expect(response.json().data.paymentStatus).to.eql('pending'));});"
+                  "pm.sendRequest({url:pm.variables.get('baseUrl')+'/api/orders/'+pm.collectionVariables.get('sslOrderId'),method:'GET',header:{Authorization:'Bearer '+pm.collectionVariables.get('customerToken')}},(error,response)=>{pm.test('Order status is readable after invalid callback',()=>{pm.expect(error).to.eql(null);pm.expect(response.code).to.eql(200);});if(!error&&response.code===200)pm.test('Forged callback status did not mark the payment paid',()=>pm.expect(response.json().data.paymentStatus).to.eql('pending'));});"
                 ]
               }
             }
           ]
         }
-      ],
-      "description": "Uses only implemented API routes. Callback request fields are untrusted; status changes come from SSLCommerz server-side validation. Live amount/currency mismatch tests require a provider validation response with mismatched data or a controlled database fixture; neither can be safely created through this public API/Postman collection."
+      ]
     },
     {
       "name": "3 Coupons",
@@ -2327,84 +2305,807 @@
           ]
         }
       ]
+    },
+    {
+      "name": "5 Share Your Experience",
+      "item": [
+        {
+          "name": "List approved product reviews (public)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/products/{{productId}}/reviews"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Product reviews endpoint returns 200',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200)pm.test('Response contains only approved reviews and a rating summary',()=>{const d=pm.response.json().data;pm.expect(d.reviews).to.be.an('array');pm.expect(d.reviews.every(review=>review.status==='approved')).to.eql(true);pm.expect(d.rating).to.be.an('object');});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Share Your Experience review (customer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Postman review check\",\n  \"text\": \"This is a Postman check of the product experience review form.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/products/{{productId}}/reviews",
+            "description": "Creates a pending review tied to the signed-in customer. The API permits one review per customer per product; choose another productId if a duplicate already exists."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.unset('reviewTestId');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Review is created or correctly rejected as an existing duplicate',()=>pm.expect([201,409]).to.include(pm.response.code));",
+                  "if(pm.response.code===201){const d=pm.response.json().data;pm.collectionVariables.set('reviewTestId',d._id);pm.test('New review starts pending and is server-linked to customer',()=>{pm.expect(d.status).to.eql('pending');pm.expect(d.customer).to.exist;});}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject invalid review rating",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 6,\n  \"text\": \"This rating is outside the allowed range.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/products/{{productId}}/reviews"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid review is rejected with 400',()=>pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject duplicate review for same customer and product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"title\": \"Duplicate review check\",\n  \"text\": \"A customer cannot submit another review for this product.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/products/{{productId}}/reviews"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unique customer-product review constraint returns 409',()=>pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin review list rejects unauthenticated request",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/reviews?status=pending"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin review list requires authentication',()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer cannot access admin review list",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/reviews?status=pending"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Customer is forbidden from admin review list',()=>pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin lists pending reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/reviews?status=pending"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin can list pending reviews',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200){const data=pm.response.json().data;pm.test('Admin review response is an array',()=>pm.expect(data).to.be.an('array'));const id=pm.collectionVariables.get('reviewTestId');if(id)pm.test('New pending review appears in the admin list',()=>pm.expect(data.some(review=>review._id===id)).to.eql(true));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject Postman-created review (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/admin/reviews/{{reviewTestId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.collectionVariables.get('reviewTestId'))pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin can reject a review',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200)pm.test('Review status is now rejected',()=>pm.expect(pm.response.json().data.status).to.eql('rejected'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Postman-created review (cleanup)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/reviews/{{reviewTestId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.collectionVariables.get('reviewTestId'))pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Postman review cleanup succeeds',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200)pm.collectionVariables.unset('reviewTestId');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 Contact",
+      "item": [
+        {
+          "name": "Submit Contact Us message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Contact Test\",\n  \"email\": \"postman-contact@example.com\",\n  \"phone\": \"\",\n  \"subject\": \"Contact API check\",\n  \"message\": \"This is a Postman check that Contact Us messages are saved for the admin team.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/contact-messages",
+            "description": "Creates a real MongoDB contact message. It will remain in the admin inbox; the status update request below marks it resolved."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contact message is accepted and saved',()=>pm.response.to.have.status(201));",
+                  "if(pm.response.code===201){const id=pm.response.json().data.id;pm.collectionVariables.set('contactMessageTestId',id);pm.test('Server returns the saved message ID',()=>pm.expect(id).to.be.a('string').and.not.empty);}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject invalid Contact Us message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"email\": \"not-an-email\",\n  \"message\": \"short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/contact-messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid contact message is rejected with 400',()=>pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Contact honeypot is quietly accepted without creating a message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"website\": \"filled-by-bot\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/contact-messages"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Honeypot gets a quiet accepted response',()=>pm.response.to.have.status(202));",
+                  "if(pm.response.code===202)pm.test('Response does not expose whether message was stored',()=>pm.expect(pm.response.json().data.accepted).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin Contact inbox rejects unauthenticated request",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/admin/contact-messages?status=new"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contact inbox requires authentication',()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer cannot access Admin Contact inbox",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/contact-messages?status=new"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contact inbox denies customer access',()=>pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin lists Contact messages and finds saved test message",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/admin/contact-messages?status=new"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin Contact inbox returns 200',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200){const data=pm.response.json().data;pm.test('Inbox contains a message array',()=>pm.expect(data).to.be.an('array'));const id=pm.collectionVariables.get('contactMessageTestId');if(id)pm.test('Newly submitted message appears in the database-backed inbox',()=>pm.expect(data.some(message=>message._id===id)).to.eql(true));}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject unsupported Contact message status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"paid\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/admin/contact-messages/{{contactMessageTestId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.collectionVariables.get('contactMessageTestId'))pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unsupported Contact status is rejected',()=>pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unauthenticated user cannot update Contact message",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/admin/contact-messages/{{contactMessageTestId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.collectionVariables.get('contactMessageTestId'))pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contact status update requires authentication',()=>pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer cannot update Contact message",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/admin/contact-messages/{{contactMessageTestId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.collectionVariables.get('contactMessageTestId'))pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Customer is forbidden from updating Contact status',()=>pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark Postman Contact message resolved (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"resolved\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/admin/contact-messages/{{contactMessageTestId}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if(!pm.collectionVariables.get('contactMessageTestId'))pm.execution.skipRequest();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin can update Contact message status',()=>pm.response.to.have.status(200));",
+                  "if(pm.response.code===200){const d=pm.response.json().data;pm.test('Resolved message has resolvedAt timestamp',()=>{pm.expect(d.status).to.eql('resolved');pm.expect(d.resolvedAt).to.exist;});pm.collectionVariables.unset('contactMessageTestId');}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [
     {
-      "key": "orderNumber",
-      "value": ""
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
     },
     {
-      "key": "orderPhone",
-      "value": "01700000000"
+      "key": "customerEmail",
+      "value": "",
+      "type": "string"
     },
     {
-      "key": "idempotencyKey",
-      "value": "cod-checkout-attempt-0001"
+      "key": "customerPassword",
+      "value": "",
+      "type": "string"
     },
     {
-      "key": "orderId",
-      "value": ""
+      "key": "adminEmail",
+      "value": "",
+      "type": "string"
     },
     {
-      "key": "sslOrderId",
-      "value": ""
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
     },
     {
-      "key": "sslTransactionId",
-      "value": ""
+      "key": "deliveryEmail",
+      "value": "",
+      "type": "string"
     },
     {
-      "key": "sslCommerzEnabled",
-      "value": "false"
+      "key": "deliveryPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "deliveryPartnerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "productId",
+      "value": "",
+      "type": "string"
     },
     {
       "key": "codRunKey",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
-      "key": "sslRunKey",
-      "value": ""
+      "key": "orderPhone",
+      "value": "01700000000",
+      "type": "string"
     },
     {
-      "key": "sslPaymentKey",
-      "value": ""
+      "key": "orderId",
+      "value": "",
+      "type": "string"
     },
     {
       "key": "deliveryPartnerId",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
-      "key": "invalidTransactionId",
-      "value": "MMP-POSTMAN-INVALID-0000000000"
-    },
-    {
-      "key": "otherCustomerOrderId",
-      "value": ""
-    },
-    {
-      "key": "sslFailedTransactionId",
-      "value": ""
-    },
-    {
-      "key": "sslCancelledTransactionId",
-      "value": ""
-    },
-    {
-      "key": "cancelOrderId",
-      "value": ""
+      "key": "orderNumber",
+      "value": "",
+      "type": "string"
     },
     {
       "key": "cancelRunKey",
-      "value": ""
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "cancelOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "otherCustomerOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "cod-checkout-attempt-0001",
+      "type": "string"
+    },
+    {
+      "key": "sslRunKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sslPaymentKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sslOrderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invalidTransactionId",
+      "value": "MMP-POSTMAN-INVALID-0000000000",
+      "type": "string"
+    },
+    {
+      "key": "sslTransactionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sslFailedTransactionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sslCancelledTransactionId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sslCommerzEnabled",
+      "value": "false",
+      "type": "string"
     },
     {
       "key": "sslFailedOrderId",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "sslCancelledOrderId",
-      "value": ""
+      "value": "",
+      "type": "string"
     },
     {
       "key": "couponTestCode",
@@ -2413,6 +3114,16 @@
     },
     {
       "key": "couponTestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reviewTestId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "contactMessageTestId",
       "value": "",
       "type": "string"
     }
