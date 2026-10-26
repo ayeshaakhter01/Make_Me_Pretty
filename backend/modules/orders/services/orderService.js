@@ -339,24 +339,12 @@ function unreadCount(order, viewerRole) {
 export async function hasDeliveredOrderWithProduct(customerId, productId) {
   return Boolean(await Order.exists({ customer: customerId, status: "delivered", "items.product": productId }));
 }
-// Gives stock (and the coupon use) back for a cancelled order. Used by both cancel paths.
-async function restoreReservedStock(order) {
-  await Product.bulkWrite(order.items.map((item) => ({ updateOne: { filter: { _id: item.product }, update: { $inc: { stock: item.quantity } } } })));
-  if (order.couponCode) await Coupon.updateOne({ code: order.couponCode, usedCount: { $gt: 0 } }, { $inc: { usedCount: -1 } });
-}
-
-// Cancels only if the order is STILL in an allowed status and unpaid.
-// Check and change happen in one database step, so a double click cannot restore stock twice.
-// Returns null if someone else changed the order first.
-async function cancelOrder(filter, allowedStatuses) {
-  const order = await Order.findOneAndUpdate({ ...filter, status: { $in: allowedStatuses }, paymentStatus: { $ne: "paid" } }, { $set: { status: "cancelled" } }, { new: true });
-  if (order) await restoreReservedStock(order);
-  return order;
-}
 
 export async function cancelMyOrder(customerId, orderId) {
   if (!/^[\da-f]{24}$/i.test(orderId || "")) throw new AppError("Order not found.", 404);
-  const order = await cancelOrder({ _id: orderId, customer: customerId }, ["pending"]);
-  if (!order) throw new AppError("Only orders that are still pending can be cancelled here. Please contact the shop for confirmed orders.", 409);
-  return order;
+  const order = await Order.findOne({ _id: orderId, customer: customerId }).select("status").lean();
+  if (!order) throw new AppError("Order not found.", 404);
+  if (order.status === "cancelled") throw new AppError("This order is already cancelled.", 409);
+  if (order.status !== "pending") throw new AppError("Only orders that are still pending can be cancelled here. Please contact the shop for confirmed orders.", 409);
+  return updateOrderStatus(orderId, "cancelled");
 }
