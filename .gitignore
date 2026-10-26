@@ -13,3 +13,6 @@ build/
 
 # Logs
 npm-debug.log*
+
+/postman/**/*.postman_environment.json
+
