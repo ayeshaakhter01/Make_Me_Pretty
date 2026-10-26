@@ -15,7 +15,8 @@ backend/postman/
     │   ├── Fayeza - Banners Blogs Shopping Orders Delivery.postman_collection.json
     │   └── screenshots/
     ├── fahmida/
-    │   └── screenshots/     (add: Fahmida - <modules>.postman_collection.json)
+    │   ├── Fahmida - Catalog Brands Policies Site Settings Skin Advisor.postman_collection.json
+    │   └── screenshots/
     └── akhi/
         └── screenshots/     (add: Akhi - <modules>.postman_collection.json)
 ```
