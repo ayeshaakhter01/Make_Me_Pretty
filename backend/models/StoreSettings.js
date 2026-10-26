@@ -19,6 +19,7 @@ const policyPageSchema = new mongoose.Schema(
 const storeSettingsSchema = new mongoose.Schema(
   {
     key: { type: String, unique: true, default: "storefront" },
+    logo: { type: String, default: "" },
     footer: {
       type: mongoose.Schema.Types.Mixed,
       default: () => ({
@@ -28,9 +29,10 @@ const storeSettingsSchema = new mongoose.Schema(
         payments: [],
       }),
     },
-    // Contact and footer links/socials stay here; logo, About sections, and payment logos have their own collections.
+    // About page sections stay in the dedicated aboutus collection.
     contact: { type: mongoose.Schema.Types.Mixed, default: () => ({}) },
-    mediaCollectionsInitialized: { type: Boolean, default: false },
+    aboutSectionsInitialized: { type: Boolean, default: false },
+    logoPaymentsMigrated: { type: Boolean, default: false },
     // From FYasmin12-branch (older policy storage, kept so no data is lost)
     policyPages: {
       type: [policyPageSchema],
