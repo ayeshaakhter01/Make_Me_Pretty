@@ -1,4 +1,7 @@
 import StoreSettings from "../../../models/StoreSettings.js";
+import StoreLogo from "../../../models/StoreLogo.js";
+import AboutSection from "../../../models/AboutSection.js";
+import PaymentLogo from "../../../models/PaymentLogo.js";
 import Policy from "../../../models/Policy.js";
 import AppError from "../../../utils/AppError.js";
 
@@ -86,27 +89,111 @@ function cleanContact(contact) {
 }
 export async function getStoreSettings() {
   const saved = await StoreSettings.findOne({ key: "storefront" }).lean();
+  await migrateLegacyMedia(saved);
+  const [logoRecord, aboutRecords, paymentRecords] = await Promise.all([
+    StoreLogo.findOne({ key: "storefront" }).lean(),
+    AboutSection.find().sort({ order: 1, createdAt: 1 }).lean(),
+    PaymentLogo.find().sort({ order: 1, createdAt: 1 }).lean(),
+  ]);
   const storedFooter = saved?.footer || DEFAULT_FOOTER;
   const footer = await withPolicyLinks({
     ...storedFooter,
-    payments: (Array.isArray(storedFooter.payments) ? storedFooter.payments : []).map((payment) => ({
-      ...payment,
-      src: typeof payment.src === "string" ? normalizePaymentImagePath(payment.src) : payment.src,
-    })),
+    payments: saved?.mediaCollectionsInitialized
+      ? paymentRecords.map(({ id, label, src }) => ({ id, label, src }))
+      : (paymentRecords.length ? paymentRecords.map(({ id, label, src }) => ({ id, label, src })) : DEFAULT_FOOTER.payments),
   });
-  return { logo: saved?.logo || "", footer, about: saved?.about ?? DEFAULT_ABOUT, contact: saved?.contact ?? DEFAULT_CONTACT };
+  return {
+    logo: logoRecord?.src || "",
+    footer,
+    about: saved?.mediaCollectionsInitialized
+      ? aboutRecords.map(({ id, name, text, image }) => ({ id, name, text, image }))
+      : (aboutRecords.length ? aboutRecords.map(({ id, name, text, image }) => ({ id, name, text, image })) : DEFAULT_ABOUT),
+    contact: saved?.contact ?? DEFAULT_CONTACT,
+  };
 }
+
+// Move existing storefront media once, then remove the old embedded copies.
+async function migrateLegacyMedia(saved) {
+  if (!saved) return;
+  const legacy = await StoreSettings.collection.findOne({ key: "storefront" });
+  if (!legacy) return;
+  const unset = {};
+  if (typeof legacy.logo === "string") {
+    await StoreLogo.updateOne({ key: "storefront" }, { $setOnInsert: { key: "storefront", src: legacy.logo } }, { upsert: true });
+    unset.logo = "";
+  }
+  if (Array.isArray(legacy.about)) {
+    if (legacy.about.length) {
+      const existingCount = await AboutSection.countDocuments();
+      if (!existingCount) await AboutSection.insertMany(legacy.about.map((item, order) => ({ ...item, order })));
+    }
+    unset.about = "";
+  }
+  if (Array.isArray(legacy.footer?.payments)) {
+    if (legacy.footer.payments.length) {
+      const existingCount = await PaymentLogo.countDocuments();
+      if (!existingCount) await PaymentLogo.insertMany(legacy.footer.payments.map((item, order) => ({
+        ...item, id: String(item.id || item.label), src: normalizePaymentImagePath(item.src), order,
+      })));
+    }
+    unset["footer.payments"] = "";
+  }
+  if (Object.keys(unset).length) await StoreSettings.updateOne({ key: "storefront" }, { $unset: unset });
+  await StoreSettings.updateOne({ key: "storefront" }, { $set: { mediaCollectionsInitialized: true } });
+}
+
 export async function updateStoreSettings(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new AppError("Settings payload must be an object.", 400);
   const update = {};
+  const mediaUpdates = [];
   if (Object.hasOwn(input, "logo")) {
     if (input.logo !== "" && !validMedia(input.logo)) throw new AppError("Logo must be an HTTPS URL or an uploaded image path.", 400);
-    update.logo = input.logo;
+    mediaUpdates.push(StoreLogo.findOneAndUpdate({ key: "storefront" }, { $set: { src: input.logo }, $setOnInsert: { key: "storefront" } }, { upsert: true, returnDocument: "after" }));
   }
-  if (Object.hasOwn(input, "footer")) update.footer = cleanFooter(input.footer);
-  if (Object.hasOwn(input, "about")) update.about = cleanAbout(input.about);
+  if (Object.hasOwn(input, "footer")) {
+    const cleanedFooter = cleanFooter(input.footer);
+    const payments = cleanedFooter.payments;
+    delete cleanedFooter.payments;
+    update.footer = cleanedFooter;
+    mediaUpdates.push(async () => {
+      await PaymentLogo.deleteMany({});
+      if (payments.length) await PaymentLogo.insertMany(payments.map((item, order) => ({ ...item, order })));
+    });
+  }
+  if (Object.hasOwn(input, "about")) {
+    const about = cleanAbout(input.about);
+    mediaUpdates.push(async () => {
+      await AboutSection.deleteMany({});
+      if (about.length) await AboutSection.insertMany(about.map((item, order) => ({ ...item, order })));
+    });
+  }
   if (Object.hasOwn(input, "contact")) update.contact = cleanContact(input.contact);
-  if (!Object.keys(update).length) throw new AppError("No supported settings were provided.", 400);
-  const saved = await StoreSettings.findOneAndUpdate({ key: "storefront" }, { $set: update, $setOnInsert: { key: "storefront" } }, { returnDocument: "after", upsert: true, runValidators: true }).lean();
-  return { logo: saved.logo || "", footer: await withPolicyLinks(saved.footer || DEFAULT_FOOTER), about: saved.about ?? DEFAULT_ABOUT, contact: saved.contact ?? DEFAULT_CONTACT };
+  if (!Object.keys(update).length && !mediaUpdates.length) throw new AppError("No supported settings were provided.", 400);
+  await Promise.all(mediaUpdates.map((updateMedia) => updateMedia()));
+  if (mediaUpdates.length) update.mediaCollectionsInitialized = true;
+  const saved = Object.keys(update).length
+    ? await StoreSettings.findOneAndUpdate({ key: "storefront" }, { $set: update, $setOnInsert: { key: "storefront" } }, { returnDocument: "after", upsert: true, runValidators: true }).lean()
+    : await StoreSettings.findOne({ key: "storefront" }).lean();
+  return getStoreSettingsFromSaved(saved);
+}
+
+async function getStoreSettingsFromSaved(saved) {
+  const [logoRecord, aboutRecords, paymentRecords] = await Promise.all([
+    StoreLogo.findOne({ key: "storefront" }).lean(),
+    AboutSection.find().sort({ order: 1, createdAt: 1 }).lean(),
+    PaymentLogo.find().sort({ order: 1, createdAt: 1 }).lean(),
+  ]);
+  const footer = await withPolicyLinks({
+    ...(saved?.footer || DEFAULT_FOOTER),
+    payments: saved?.mediaCollectionsInitialized
+      ? paymentRecords.map(({ id, label, src }) => ({ id, label, src }))
+      : (paymentRecords.length ? paymentRecords.map(({ id, label, src }) => ({ id, label, src })) : DEFAULT_FOOTER.payments),
+  });
+  return {
+    logo: logoRecord?.src || "", footer,
+    about: saved?.mediaCollectionsInitialized
+      ? aboutRecords.map(({ id, name, text, image }) => ({ id, name, text, image }))
+      : (aboutRecords.length ? aboutRecords.map(({ id, name, text, image }) => ({ id, name, text, image })) : DEFAULT_ABOUT),
+    contact: saved?.contact ?? DEFAULT_CONTACT,
+  };
 }
