@@ -1,0 +1,2405 @@
+{
+  "info": {
+    "name": "Fahmida - Catalog Brands Policies Site Settings Skin Advisor",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "customerToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "runKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "existingSlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "firstCategory",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testProductId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testProductSlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testBrandId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "existingPolicySlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testPolicyId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "testPolicySlug",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reservedPolicyId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "originalFooter",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "footerWithTest",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0 Setup",
+      "item": [
+        {
+          "name": "Health check returns success and starts a run key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('API is healthy', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Success envelope is present', () => pm.expect(j.success).to.eql(true));",
+                  "pm.collectionVariables.set('runKey', String(Date.now()));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login admin succeeds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin credentials authenticate', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('adminToken', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register customer returns 201 or duplicate 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Customer\",\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Registration returns 201 or duplicate 409', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login customer succeeds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Customer credentials authenticate', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('customerToken', pm.response.json().data.token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 Catalog",
+      "item": [
+        {
+          "name": "List products returns a paged list of active products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products?page=1&limit=24"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const p = j.data;",
+                  "pm.test('Paged response shape', () => { pm.expect(p.data).to.be.an('array'); pm.expect(p.count).to.be.a('number'); pm.expect(p.page).to.eql(1); pm.expect(p.pages).to.be.a('number'); });",
+                  "pm.test('Only active products are public', () => pm.expect(p.data.every((x) => x.active !== false)).to.eql(true));",
+                  "pm.test('Products carry rating and review count', () => pm.expect(p.data.every((x) => typeof x.rating === 'number' && typeof x.reviews === 'number')).to.eql(true));",
+                  "if (p.data.length) { pm.collectionVariables.set('existingSlug', p.data[0].slug); pm.collectionVariables.set('firstCategory', p.data[0].category); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter products by category returns only that category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products?category={{firstCategory}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Every product matches the category', () => pm.expect(j.data.data.every((x) => x.category === pm.collectionVariables.get('firstCategory'))).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search products by text returns a list",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products?q=serum"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Search returns an array', () => pm.expect(j.data.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sort by price ascending returns increasing prices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products?sort=price_asc&limit=24"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const prices = j.data.data.map((x) => x.price);",
+                  "pm.test('Prices are not decreasing', () => pm.expect(prices.every((v, i) => i === 0 || v >= prices[i - 1])).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limit is capped at 60 products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products?limit=500"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('At most 60 products', () => pm.expect(j.data.data.length).to.be.at.most(60));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Best sellers returns up to 12 products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products/best-sellers"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Array of at most 12', () => { pm.expect(j.data).to.be.an('array'); pm.expect(j.data.length).to.be.at.most(12); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List categories returns text values",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/categories"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Categories are strings', () => { pm.expect(j.data).to.be.an('array'); pm.expect(j.data.every((c) => typeof c === 'string')).to.eql(true); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get product by slug returns the product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{existingSlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Slug matches and rating is included', () => { pm.expect(j.data.slug).to.eql(pm.collectionVariables.get('existingSlug')); pm.expect(j.data.rating).to.be.a('number'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get unknown product returns 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products/does-not-exist-{{runKey}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject admin product list without a token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject admin product list for a customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin product list returns every product",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Array with an active flag', () => { pm.expect(j.data).to.be.an('array'); pm.expect(j.data.length).to.be.above(0); pm.expect(j.data[0]).to.have.property('active'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create product without a token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Product {{runKey}}\",\n  \"slug\": \"postman-test-{{runKey}}\",\n  \"brand\": \"Postman Test\",\n  \"category\": \"Skincare\",\n  \"type\": \"Serum\",\n  \"size\": \"30ml\",\n  \"price\": 499,\n  \"stock\": 5,\n  \"description\": \"Temporary product created by the Postman run.\",\n  \"usage\": \"Apply two drops to clean skin.\",\n  \"ingredients\": [\n    \"Water\"\n  ],\n  \"skin\": \"All skin types\",\n  \"images\": [\n    \"https://example.com/postman-test.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create product for a customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Product {{runKey}}\",\n  \"slug\": \"postman-test-{{runKey}}\",\n  \"brand\": \"Postman Test\",\n  \"category\": \"Skincare\",\n  \"type\": \"Serum\",\n  \"size\": \"30ml\",\n  \"price\": 499,\n  \"stock\": 5,\n  \"description\": \"Temporary product created by the Postman run.\",\n  \"usage\": \"Apply two drops to clean skin.\",\n  \"ingredients\": [\n    \"Water\"\n  ],\n  \"skin\": \"All skin types\",\n  \"images\": [\n    \"https://example.com/postman-test.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create product without a price",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Product {{runKey}}\",\n  \"slug\": \"postman-bad-{{runKey}}\",\n  \"brand\": \"Postman Test\",\n  \"category\": \"Skincare\",\n  \"type\": \"Serum\",\n  \"size\": \"30ml\",\n  \"stock\": 5,\n  \"description\": \"Temporary product created by the Postman run.\",\n  \"usage\": \"Apply two drops to clean skin.\",\n  \"ingredients\": [\n    \"Water\"\n  ],\n  \"skin\": \"All skin types\",\n  \"images\": [\n    \"https://example.com/postman-test.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create product with an unsupported field",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Product {{runKey}}\",\n  \"slug\": \"postman-bad-{{runKey}}\",\n  \"brand\": \"Postman Test\",\n  \"category\": \"Skincare\",\n  \"type\": \"Serum\",\n  \"size\": \"30ml\",\n  \"price\": 499,\n  \"stock\": 5,\n  \"description\": \"Temporary product created by the Postman run.\",\n  \"usage\": \"Apply two drops to clean skin.\",\n  \"ingredients\": [\n    \"Water\"\n  ],\n  \"skin\": \"All skin types\",\n  \"images\": [\n    \"https://example.com/postman-test.jpg\"\n  ],\n  \"hacker\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create product with an insecure image URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Product {{runKey}}\",\n  \"slug\": \"postman-bad-{{runKey}}\",\n  \"brand\": \"Postman Test\",\n  \"category\": \"Skincare\",\n  \"type\": \"Serum\",\n  \"size\": \"30ml\",\n  \"price\": 499,\n  \"stock\": 5,\n  \"description\": \"Temporary product created by the Postman run.\",\n  \"usage\": \"Apply two drops to clean skin.\",\n  \"ingredients\": [\n    \"Water\"\n  ],\n  \"skin\": \"All skin types\",\n  \"images\": [\n    \"http://insecure.example/x.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin creates a product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Product {{runKey}}\",\n  \"slug\": \"postman-test-{{runKey}}\",\n  \"brand\": \"Postman Test\",\n  \"category\": \"Skincare\",\n  \"type\": \"Serum\",\n  \"size\": \"30ml\",\n  \"price\": 499,\n  \"stock\": 5,\n  \"description\": \"Temporary product created by the Postman run.\",\n  \"usage\": \"Apply two drops to clean skin.\",\n  \"ingredients\": [\n    \"Water\"\n  ],\n  \"skin\": \"All skin types\",\n  \"images\": [\n    \"https://example.com/postman-test.jpg\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Created product is active', () => { pm.expect(j.data.active).to.eql(true); pm.expect(j.data.price).to.eql(499); });",
+                  "pm.collectionVariables.set('testProductId', j.data._id);",
+                  "pm.collectionVariables.set('testProductSlug', j.data.slug);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Created product is visible in the shop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{testProductSlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin updates the product price",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/{{testProductId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"price\": 599\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Price changed', () => pm.expect(j.data.price).to.eql(599));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject update with negative stock",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/{{testProductId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock\": -1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin deletes the product (soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/{{testProductId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Product is now inactive', () => pm.expect(j.data.active).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted product is hidden from the shop",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{testProductSlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted product stays in admin inventory as inactive",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const row = j.data.find((x) => x._id === pm.collectionVariables.get('testProductId'));",
+                  "pm.test('Still stored and flagged inactive', () => { pm.expect(row).to.exist; pm.expect(row.active).to.eql(false); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin restores the product",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/{{testProductId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Product is active again', () => pm.expect(j.data.active).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restored product is visible in the shop again",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/products/{{testProductSlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 Brands",
+      "item": [
+        {
+          "name": "Public brand list returns brands with logo and product count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/brands"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Array of brand cards', () => { pm.expect(j.data).to.be.an('array'); if (j.data.length) { pm.expect(j.data[0]).to.have.property('name'); pm.expect(j.data[0]).to.have.property('logo'); pm.expect(j.data[0].productCount).to.be.a('number'); } });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject admin brand list without a token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/brands/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject admin brand list for a customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin brand list returns every brand",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Array of brands with ids', () => { pm.expect(j.data).to.be.an('array'); if (j.data.length) pm.expect(j.data[0]).to.have.property('id'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create brand without a token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Brand {{runKey}}\",\n  \"description\": \"Temporary brand\",\n  \"logo\": \"\",\n  \"order\": 999,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create brand without a name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"description\": \"Temporary brand\",\n  \"logo\": \"\",\n  \"order\": 999,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create brand with an insecure logo URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Brand {{runKey}}\",\n  \"description\": \"Temporary brand\",\n  \"logo\": \"http://insecure.example/logo.png\",\n  \"order\": 999,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin creates a brand",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Brand {{runKey}}\",\n  \"description\": \"Temporary brand\",\n  \"logo\": \"\",\n  \"order\": 999,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Brand saved', () => pm.expect(j.data.name).to.include('Postman Brand'));",
+                  "pm.collectionVariables.set('testBrandId', j.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject duplicate brand name",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Brand {{runKey}}\",\n  \"description\": \"Temporary brand\",\n  \"logo\": \"\",\n  \"order\": 999,\n  \"active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin updates the brand description",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands/{{testBrandId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated by Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Description changed', () => pm.expect(j.data.description).to.eql('Updated by Postman'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject update of an unknown brand",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands/000000000000000000000000",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject update with an invalid id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands/not-an-id",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 Policies",
+      "item": [
+        {
+          "name": "Public policy list returns published policies",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/policies"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Array with title and slug', () => { pm.expect(j.data).to.be.an('array'); if (j.data.length) { pm.expect(j.data[0]).to.have.property('title'); pm.expect(j.data[0]).to.have.property('slug'); pm.collectionVariables.set('existingPolicySlug', j.data[0].slug); } });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get a policy by slug returns its content",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/policies/{{existingPolicySlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has title and content', () => { pm.expect(j.data.title).to.be.a('string'); pm.expect(j.data.content).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get unknown policy returns 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/policies/does-not-exist-{{runKey}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject admin policy list without a token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/policies/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject admin policy list for a customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin policy list includes drafts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies/admin/all"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Array of policies', () => pm.expect(j.data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create policy for a customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Policy {{runKey}}\",\n  \"content\": \"## Test heading\\n\\nTemporary policy created by Postman.\",\n  \"published\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject create policy without content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"No content {{runKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin creates a policy and the slug comes from the title",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman Policy {{runKey}}\",\n  \"content\": \"## Test heading\\n\\nTemporary policy created by Postman.\",\n  \"published\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('Slug is built from the title', () => pm.expect(j.data.slug).to.match(/^postman-policy-/));",
+                  "pm.collectionVariables.set('testPolicyId', j.data._id);",
+                  "pm.collectionVariables.set('testPolicySlug', j.data.slug);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "New policy page is public",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/policies/{{testPolicySlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Content is returned', () => pm.expect(j.data.content).to.include('Temporary policy'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Footer policy links include the new policy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/site-settings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const slug = pm.collectionVariables.get('testPolicySlug');",
+                  "pm.test('Footer links are built from policies', () => pm.expect(j.data.footer.policyLinks.some((l) => l.href === '/p/' + slug)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reserved addresses are never used for a policy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"About Us\",\n  \"content\": \"Reserved address check.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('about-us stays reserved', () => pm.expect(['about-us', 'contact']).to.not.include(j.data.slug));",
+                  "pm.collectionVariables.set('reservedPolicyId', j.data._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin edits the policy content",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies/{{testPolicyId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Updated policy text from Postman.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Content updated, slug unchanged', () => { pm.expect(j.data.content).to.include('Updated policy text'); pm.expect(j.data.slug).to.eql(pm.collectionVariables.get('testPolicySlug')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin unpublishes the policy",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies/{{testPolicyId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"published\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Now a draft', () => pm.expect(j.data.published).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unpublished policy is hidden from customers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/policies/{{testPolicySlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Footer no longer links to the unpublished policy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/site-settings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const slug = pm.collectionVariables.get('testPolicySlug');",
+                  "pm.test('Link removed from footer', () => pm.expect(j.data.footer.policyLinks.some((l) => l.href === '/p/' + slug)).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 Site Settings",
+      "item": [
+        {
+          "name": "Public settings return logo, footer, about and contact",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/site-settings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const d = j.data;",
+                  "pm.test('Settings shape', () => { pm.expect(d).to.have.property('logo'); pm.expect(d.footer.helpLinks).to.be.an('array'); pm.expect(d.footer.socials).to.be.an('array'); pm.expect(d.footer.payments).to.be.an('array'); pm.expect(d.footer.policyLinks).to.be.an('array'); pm.expect(d.about).to.be.an('array'); pm.expect(d.contact).to.be.an('object'); });",
+                  "pm.test('Footer does not expose old policyPages', () => pm.expect(d.footer).to.not.have.property('policyPages'));",
+                  "pm.collectionVariables.set('originalFooter', JSON.stringify(d.footer));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject settings update without a token",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/site-settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"logo\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject settings update for a customer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/site-settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"logo\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject empty settings update",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/site-settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject an unsafe logo address",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/site-settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"logo\": \"javascript:alert(1)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a social link that is not HTTPS",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/site-settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"footer\": {\n    \"helpLinks\": [],\n    \"socials\": [\n      {\n        \"name\": \"Bad\",\n        \"href\": \"http://insecure.example\",\n        \"active\": true\n      }\n    ],\n    \"payments\": []\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin adds a help link to the footer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/site-settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"footer\": {{footerWithTest}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const f = JSON.parse(pm.collectionVariables.get('originalFooter'));",
+                  "f.helpLinks = [...f.helpLinks, { id: 'help-postman-' + pm.collectionVariables.get('runKey'), label: 'Postman Test', href: '/p/postman-test' }];",
+                  "pm.collectionVariables.set('footerWithTest', JSON.stringify(f));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Help link saved', () => pm.expect(j.data.footer.helpLinks.some((l) => l.label === 'Postman Test')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saved footer change is public",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/site-settings"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Help link is visible', () => pm.expect(j.data.footer.helpLinks.some((l) => l.label === 'Postman Test')).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 Skin Advisor",
+      "item": [
+        {
+          "name": "Recommendations return real catalog products and a disclaimer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/skin-advisor/recommendations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skinType\": \"Oily\",\n  \"concerns\": [\n    \"acne\",\n    \"oiliness\"\n  ],\n  \"preferences\": \"lightweight, fragrance free\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const d = j.data;",
+                  "pm.test('Mode is ai or catalog-rules', () => pm.expect(['ai', 'catalog-rules']).to.include(d.mode));",
+                  "pm.test('Summary and disclaimer are text', () => { pm.expect(d.summary).to.be.a('string'); pm.expect(d.disclaimer).to.be.a('string').and.not.empty; });",
+                  "pm.test('Up to 4 recommendations with product ids and reasons', () => { pm.expect(d.recommendations).to.be.an('array'); pm.expect(d.recommendations.length).to.be.at.most(4); d.recommendations.forEach((r) => { pm.expect(r.productId).to.be.ok; pm.expect(r.reason).to.be.a('string'); }); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject an empty request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/skin-advisor/recommendations",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a skin type that is not text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/skin-advisor/recommendations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skinType\": 123,\n  \"concerns\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject more than 8 concerns",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/skin-advisor/recommendations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skinType\": \"Oily\",\n  \"concerns\": [\n    \"a\",\n    \"b\",\n    \"c\",\n    \"d\",\n    \"e\",\n    \"f\",\n    \"g\",\n    \"h\",\n    \"i\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a very long skin type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/skin-advisor/recommendations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skinType\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\",\n  \"concerns\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 Cleanup",
+      "item": [
+        {
+          "name": "Delete the test product",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/products/{{testProductId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete the test brand",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/brands/{{testBrandId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete the test policy",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies/{{testPolicyId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete the reserved-address test policy",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/policies/{{reservedPolicyId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deleted policy is gone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/policies/{{testPolicySlug}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restore the original footer",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/site-settings",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"footer\": {{originalFooter}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Test help link removed', () => pm.expect(j.data.footer.helpLinks.some((l) => l.label === 'Postman Test')).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
