@@ -42,7 +42,7 @@ export default function ReviewsSection() {
   if (reviews.length === 0) return null
   return <section className="review-coverflow overflow-hidden py-16" aria-label="Customer reviews">
     <Reveal className="mx-auto mb-6 max-w-[1200px] px-5 text-center">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose">{reviews.some((review) => review.isDemo) ? 'Customer review examples' : 'From our customer community'}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose">{reviews.some((review) => review.isDemo) ? 'From our customer community' : 'From our customer community'}</p>
       <h2 className="mt-2 font-serif text-[34px] font-normal">What our customers say</h2>
     </Reveal>
     <Swiper

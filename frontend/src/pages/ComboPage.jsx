@@ -3,6 +3,7 @@ import PageContainer from '../components/ui/PageContainer.jsx'
 import ProductArtwork from '../components/products/ProductArtwork.jsx'
 import ProductBenefits from '../components/products/ProductBenefits.jsx'
 import { useCart } from '../context/useCart.js'
+import TrustMarquee from '../components/home/TrustMarquee.jsx'
 import { useCatalog } from '../context/useCatalog.js'
 
 const comboDefinitions = [
@@ -35,5 +36,5 @@ export default function ComboPage() {
   const combos = comboDefinitions.map((combo) => ({ ...combo, products: comboMembers(combo, products) })).filter((combo) => combo.products.length === combo.productIds.length)
   const selected = combos.find((combo) => combo.id === comboId)
   if (comboId) return selected ? <ComboDetail combo={selected} products={products}/> : <PageContainer className="py-16 text-center"><p className="text-ink-soft">This combo is not available in the current catalog.</p><Link to="/combo" className="mt-4 inline-block text-rose underline">Back to combo sets</Link></PageContainer>
-  return <PageContainer className="py-12"><header className="mb-9 text-center"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose">Better together</p><h1 className="mt-2 font-serif text-[clamp(30px,4.5vw,42px)]">Combo sets</h1><p className="mt-1.5 text-sm text-ink-soft">Curated routines from products currently in the catalog. Cart and checkout use each actual product and its live price.</p></header>{combos.length ? <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">{combos.map((combo) => <ComboCard key={combo.id} combo={combo} products={products}/>)}</div> : <div className="rounded-3xl border border-line bg-cream px-6 py-14 text-center text-sm text-ink-soft">These combo products are unavailable in the current catalog.</div>}</PageContainer>
+  return <><TrustMarquee/><PageContainer className="py-12"><header className="mb-9 text-center"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose">Better together</p><h1 className="mt-2 font-serif text-[clamp(30px,4.5vw,42px)]">Combo sets</h1><p className="mt-1.5 text-sm text-ink-soft">Curated routines from products currently in the catalog. Cart and checkout use each actual product and its live price.</p></header>{combos.length ? <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">{combos.map((combo) => <ComboCard key={combo.id} combo={combo} products={products}/>)}</div> : <div className="rounded-3xl border border-line bg-cream px-6 py-14 text-center text-sm text-ink-soft">These combo products are unavailable in the current catalog.</div>}</PageContainer></>
 }
