@@ -145,7 +145,7 @@ export default function AdvisorPopup() {
                 {picks.length === 0
                   ? <p className={bubble}>I couldn’t spot a specific concern yet. Try describing how your skin looks or feels (oily, dry, red, dull…).</p>
                   : <>
-                      <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-rose">{result.mode === 'ai' ? 'OpenAI recommendations' : 'Catalog matching · AI unavailable'}</p>
+                      <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-rose">{result.mode === 'ai' ? 'AI recommendations' : 'Catalog matching · AI unavailable'}</p>
                       <p className={bubble}>{result.summary}</p>
                       <ul className="space-y-3">{picks.map((pick) => <MiniPick key={pick.productId} product={pick.product} reason={pick.reason} />)}</ul>
                     </>}

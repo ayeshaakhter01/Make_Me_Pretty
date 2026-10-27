@@ -24,7 +24,7 @@ export default function TrustMarquee() {
   const marqueeItems = [...trustPoints, ...brands.map(({ brand }) => brand)]
   return (
     <div className="marquee-wrap overflow-hidden border-y border-line bg-pink-soft py-5">
-      <div className="animate-marquee flex w-max whitespace-nowrap" aria-label="Our standards and brands">
+      <div className="animate-marquee flex w-max whitespace-nowrap" style={{ animationDuration: '90s' }} aria-label="Our standards and brands">
         <MarqueeItems items={marqueeItems} />
         <MarqueeItems items={marqueeItems} hidden />
       </div>
