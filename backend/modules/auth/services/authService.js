@@ -4,6 +4,10 @@ import User from "../../../models/User.js";
 import { sendMail, isSandbox } from "../../../utils/mailer.js";
 
 const VERIFY_HOURS = 24;
+// Email verification is ON unless REQUIRE_EMAIL_VERIFICATION=false is set in backend/.env.
+// Turning it off is only for automated API runs (for example other collections that sign up and
+// immediately use the returned token). Never turn it off in a real deployment.
+const verificationRequired = () => String(process.env.REQUIRE_EMAIL_VERIFICATION).toLowerCase() !== "false";
 const hashToken = (token) => crypto.createHash("sha256").update(token).digest("hex");
 const clientUrl = () => (process.env.CLIENT_URL || (process.env.CLIENT_ORIGINS || "http://localhost:5173").split(",")[0]).trim().replace(/\/$/, "");
 
@@ -81,13 +85,16 @@ export async function registerUser({ name, email, password }) {
     throw error;
   }
 
-  // New customers start locked: emailVerified is false until they click the emailed link.
   const user = await User.create({
     name: name.trim(),
     email: cleanEmail,
     password,
-    emailVerified: false
+    emailVerified: !verificationRequired()
   });
+
+  if (!verificationRequired()) {
+    return { user: publicUser(user), token: createToken(user) };
+  }
 
   const sandboxLink = await sendVerificationEmail(user);
 
