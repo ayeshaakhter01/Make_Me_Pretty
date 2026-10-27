@@ -11,7 +11,13 @@ const startServer = async () => {
     console.error(`Missing required backend environment values: ${missing.join(", ")}. Add them to backend/.env and restart.`);
     process.exit(1);
   }
+  try {
   await connectDB();
+  console.log("MongoDB connected successfully");
+} catch (error) {
+  console.error("MongoDB connection failed:", error.message);
+  process.exit(1);
+}
 
   app.listen(PORT, () => {
     console.log(`Make Me Pretty API running on port ${PORT}`);

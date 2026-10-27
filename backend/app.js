@@ -1,3 +1,4 @@
+import connectDB from "./config/db.js";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./modules/auth/routes/authRoutes.js";
@@ -50,6 +51,9 @@ app.use(express.json());
 
 const backendDir = path.dirname(fileURLToPath(import.meta.url));
 app.use("/uploads", express.static(path.join(backendDir, "uploads"), { fallthrough: false, immutable: true, maxAge: "7d" }));
+app.use(async (req, res, next) => {
+  try { await connectDB(); next(); } catch (error) { next(error); }
+});
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
