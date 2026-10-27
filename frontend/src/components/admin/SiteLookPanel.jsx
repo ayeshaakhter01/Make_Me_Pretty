@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import ImageField from './ImageField.jsx'
 import { card } from './adminHelpers.js'
 import { apiRequest, assetUrl, uploadImage } from '../../api.js'
@@ -20,6 +20,7 @@ export default function SiteLookPanel({ logo, setLogo, headerBanners = [], onHea
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const current = headerBanners.find((banner) => banner.pagePath === page && banner.active)
+  const preview = useMemo(() => (file ? URL.createObjectURL(file) : ''), [file])
 
   async function saveHeader() {
     if (!file) return
@@ -71,7 +72,7 @@ export default function SiteLookPanel({ logo, setLogo, headerBanners = [], onHea
           <select value={page} onChange={(event) => { setPage(event.target.value); setFile(null); setError('') }}>
             {PAGES.map(([path, label]) => <option key={path} value={path}>{label}</option>)}
           </select>
-          {current && <img src={assetUrl(current.src)} alt={`${page} header preview`} className="h-20 w-full rounded-xl object-cover" />}
+          {(preview || current) && <img src={preview || assetUrl(current.src)} alt={`${page} header preview`} className="h-32 w-full rounded-xl object-cover" />}
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
           <div className="flex gap-3">
             <button type="button" onClick={saveHeader} disabled={!file || busy} className="rounded-full bg-rose px-4 py-2 text-xs text-white disabled:opacity-50">{busy ? 'Uploading…' : current ? 'Replace this page image' : 'Save page image'}</button>
