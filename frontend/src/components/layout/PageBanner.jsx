@@ -25,5 +25,5 @@ export default function PageBanner() {
   }, [pageKey])
   if (!image) return null
 
-  return <img src={assetUrl(image)} alt="" aria-hidden="true" className="block h-auto w-full" />
+  return <img src={assetUrl(image)} alt="" aria-hidden="true" className="block h-72 w-full object-cover" />
 }
