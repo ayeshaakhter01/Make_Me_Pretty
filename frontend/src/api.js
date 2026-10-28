@@ -77,5 +77,5 @@ export function uploadImage(file, kind = 'images') {
 }
 
 export function uploadReviewImage(file) {
-  return uploadImageTo(file, '/uploads/review-images')
+  return uploadImageTo(file, '/reviews/image')
 }
