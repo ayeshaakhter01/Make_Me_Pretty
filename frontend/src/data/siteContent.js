@@ -33,7 +33,7 @@ export const SEED_FOOTER = {
     { name: 'LinkedIn', href: 'https://www.linkedin.com/in/make-me-pretty-773652376?utm_source=share_via&utm_content=profile&utm_medium=member_ios', active: true },
   ],
   payments: [
-    { id: 'pay-bkash', label: 'bKash', src: '/uploads/payment-logos/bkash.svg' },
+    { id: 'pay-bkash', label: 'bKash', src: '/uploads/payment-logos/bKash.png' },
     { id: 'pay-visa', label: 'Visa', src: '/uploads/payment-logos/visa.png' },
     { id: 'pay-cod', label: 'Cash on Delivery', src: '/uploads/payment-logos/cod.png' },
   ],
