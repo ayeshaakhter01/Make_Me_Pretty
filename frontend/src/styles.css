@@ -232,6 +232,41 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .scroll-reveal-pending, .scroll-reveal-visible { opacity: 1; transform: none; transition: none; will-change: auto; }
 }
 
+.rail-scroll { touch-action: pan-x; }
+
+/* Compact layout for narrow phones; tablet and desktop layouts stay unchanged. */
+@media (max-width: 639px) {
+  body { overflow-x: clip; }
+  .rail-scroll { touch-action: pan-y; }
+
+  h1 { font-size: clamp(1.55rem, 7vw, 2rem) !important; line-height: 1.12 !important; }
+  h2 { font-size: clamp(1.25rem, 5.8vw, 1.8rem) !important; line-height: 1.2 !important; }
+  h3 { font-size: clamp(1rem, 4.2vw, 1.2rem) !important; line-height: 1.25 !important; }
+
+  .py-12 { padding-block: 2.25rem !important; }
+  .py-14 { padding-block: 2.5rem !important; }
+  .py-16 { padding-block: 2.75rem !important; }
+  .py-20 { padding-block: 3.25rem !important; }
+  .py-24 { padding-block: 3.5rem !important; }
+  .pb-16 { padding-bottom: 2.75rem !important; }
+  .mt-16 { margin-top: 2.75rem !important; }
+  .mb-16 { margin-bottom: 2.75rem !important; }
+  .space-y-16 > :not(:last-child) { margin-bottom: 3rem !important; }
+  .p-6 { padding: 1.25rem !important; }
+  .p-7, .p-8 { padding: 1.25rem !important; }
+
+  .hero3d .swiper { padding: 4px 0 24px; }
+  .hero3d-card { height: clamp(190px, 58vw, 230px); }
+  .home-categories-section { padding-block: 2rem !important; }
+  .marquee-wrap { padding-block: .75rem; }
+  .review-card { min-height: 220px !important; }
+}
+
+@media (max-width: 639px) and (prefers-reduced-motion: reduce) {
+  .marquee-wrap { overflow-x: auto; overscroll-behavior-x: contain; }
+  .marquee-wrap .animate-marquee { animation: none; }
+}
+
 /* The reference storefront uses a traveling neon stroke around search. */
 @property --angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 @keyframes search-glow-rotate { to { --angle: 360deg; } }

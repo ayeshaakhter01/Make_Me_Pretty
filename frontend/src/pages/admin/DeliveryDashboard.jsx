@@ -129,7 +129,7 @@ export default function DeliveryDashboard({ session, onSignOut }) {
             <h1 className="font-serif text-[30px] font-normal">Delivery dashboard</h1>
             <p className="text-sm text-ink-soft">Hello, {session.name}. Here are your assigned orders.</p>
           </div>
-          <div className="flex gap-4 text-sm sm:ml-auto">
+          <div className="flex gap-4 text-sm max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2 sm:ml-auto">
             <Link to="/" className="text-ink-soft underline hover:text-rose">← View shop</Link>
             <button type="button" onClick={() => setAccountOpen((open) => !open)} className="text-ink-soft underline hover:text-rose">{accountOpen ? 'Close account settings' : 'My account'}</button>
             <button type="button" onClick={onSignOut} className="text-rose underline">Sign out</button>

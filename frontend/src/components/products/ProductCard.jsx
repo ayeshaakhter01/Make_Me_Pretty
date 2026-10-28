@@ -29,13 +29,13 @@ export default function ProductCard({ product }) {
         </div>
         <div className="px-1.5 pt-4">
           <p className="text-[11px] uppercase tracking-[0.16em] text-ink-soft">{product.type}</p>
-          <h3 className="mb-1 mt-1 font-serif text-[19px] leading-snug">{product.name}</h3>
+          <h3 className="mb-1 mt-1 font-serif text-[19px] leading-snug max-sm:text-[16px]">{product.name}</h3>
           <p className="flex items-center gap-2 text-xs text-ink-soft"><span className="text-gold">★ {product.rating}</span><span className={Number(product.stock) > 0 ? '' : 'text-lowstock-text'}>({Number(product.stock) > 0 ? `${product.stock} in stock` : 'Out of stock'})</span></p>
         </div>
       </Link>
         <button type="button" onClick={() => toggleWishlist(product)} aria-label={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`} aria-pressed={saved} className={`absolute right-3 top-3 z-10 grid size-9 place-items-center rounded-full border border-line bg-cream/95 transition hover:scale-105 ${saved ? 'text-rose' : 'text-ink-soft hover:text-rose'}`}><Icon name="heart" className="size-[17px]" fill={saved ? 'currentColor' : 'none'} /></button>
       </div>
-      <div className="mt-2.5 flex items-center justify-between px-1.5"><div className="flex items-center gap-2 text-sm font-medium"><span>{money(product.price)}</span>{product.old > product.price && <span className="text-xs font-normal text-ink-soft line-through">{money(product.old)}</span>}</div><Button type="button" variant="rose" className={`gap-1.5 px-4 py-2.5 text-[13px] tracking-[0.04em] ${added ? 'bg-gold hover:bg-gold' : ''}`} aria-label={`Add ${product.name} to bag`} onClick={quickAdd}><Icon name="bag" className="size-[17px]" />{added ? 'Added' : 'Add'}</Button></div>
+      <div className="mt-2.5 flex items-center justify-between px-1.5 max-sm:gap-1"><div className="flex items-center gap-2 text-sm font-medium max-sm:min-w-0 max-sm:gap-1.5"><span className="max-sm:whitespace-nowrap">{money(product.price)}</span>{product.old > product.price && <span className="text-xs font-normal text-ink-soft line-through max-sm:truncate">{money(product.old)}</span>}</div><Button type="button" variant="rose" className={`gap-1.5 px-4 py-2.5 text-[13px] tracking-[0.04em] max-sm:gap-1 max-sm:px-2.5 max-sm:py-2 max-sm:text-[12px] max-sm:tracking-[0.02em] ${added ? 'bg-gold hover:bg-gold' : ''}`} aria-label={`Add ${product.name} to bag`} onClick={quickAdd}><Icon name="bag" className="size-[17px] max-sm:size-4" />{added ? 'Added' : 'Add'}</Button></div>
     </article>
   )
 }

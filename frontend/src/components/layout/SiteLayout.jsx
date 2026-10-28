@@ -7,15 +7,18 @@ import LiquidBackground from './LiquidBackground.jsx'
 import WelcomePromo from '../home/WelcomePromo.jsx'
 import AdvisorPopup from '../ai/AdvisorPopup.jsx'
 import PageBanner from './PageBanner.jsx'
+import TrustMarquee from '../home/TrustMarquee.jsx'
 import { useCart } from '../../context/useCart.js'
 
 export default function SiteLayout() {
   const { pathname } = useLocation()
   const { openDrawer } = useCart()
+  const pagesWithOwnMarquee = ['/', '/shop', '/skincare', '/bodycare', '/haircare', '/makeup', '/offers', '/combo']
+  const showSharedMobileMarquee = !pagesWithOwnMarquee.includes(pathname)
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }, [pathname])
 
-  return <div className="relative isolate min-h-screen"><LiquidBackground /><div className="relative z-10"><SiteHeader onOpenCart={openDrawer} /><PageBanner /><main><Outlet /></main><SiteFooter /><CartDrawer /><WelcomePromo /><AdvisorPopup /></div></div>
+  return <div className="relative isolate min-h-screen"><LiquidBackground /><div className="relative z-10"><SiteHeader onOpenCart={openDrawer} /><PageBanner />{showSharedMobileMarquee && <TrustMarquee className="sm:hidden" />}<main><Outlet /></main><SiteFooter /><CartDrawer /><WelcomePromo /><AdvisorPopup /></div></div>
 }

@@ -1,13 +1,17 @@
   import { Link, useParams, useSearchParams } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Autoplay, EffectCoverflow, Pagination } from 'swiper/modules'
+import { Swiper, SwiperSlide } from 'swiper/react'
 import ProductGallery from '../components/products/ProductGallery.jsx'
 import ProductGrid from '../components/products/ProductGrid.jsx'
 import ProductBenefits from '../components/products/ProductBenefits.jsx'
 import ProductUsage from '../components/products/ProductUsage.jsx'
 import ProductReviewForm from '../components/products/ProductReviewForm.jsx'
 import { ReviewPhotos } from '../components/products/ReviewPhoto.jsx'
+import { getReviewPhotos } from '../components/products/reviewPhotos.js'
 import Icon from '../components/ui/Icon.jsx'
 import PageContainer from '../components/ui/PageContainer.jsx'
+import Reveal from '../components/ui/Reveal.jsx'
 import { useCart } from '../context/useCart.js'
 import { useCatalog } from '../context/useCatalog.js'
 import { apiRequest } from '../api.js'
@@ -25,6 +29,8 @@ export default function ProductPage() {
   const [myReviews, setMyReviews] = useState({})
   const [approvedReviews, setApprovedReviews] = useState([])
   const [ratingSummary, setRatingSummary] = useState({ average: 0, count: 0 })
+  const [selectedReview, setSelectedReview] = useState(null)
+  const swiperRef = useRef(null)
 
   useEffect(() => {
     let current = true
@@ -34,10 +40,32 @@ export default function ProductPage() {
     return () => { current = false }
   }, [productId])
 
+  useEffect(() => {
+    const onKeyDown = (event) => { if (event.key === 'Escape') setSelectedReview(null) }
+    if (selectedReview) {
+      document.addEventListener('keydown', onKeyDown)
+      document.body.style.overflow = 'hidden'
+      swiperRef.current?.autoplay?.stop()
+    } else {
+      document.body.style.overflow = ''
+      swiperRef.current?.autoplay?.start()
+    }
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [selectedReview])
+
   if (!product) return <PageContainer className="py-24 text-center"><h1 className="font-display text-3xl">We couldn’t find that little lovely.</h1><Link to="/shop" className="mt-5 inline-block text-rose-deep underline">Back to the shop</Link></PageContainer>
 
   const related = products.filter((item) => item.category === product.category && item.id !== product.id).slice(0, 6)
   const saved = isWishlisted(product.id)
+  const displayReviews = approvedReviews.map((review) => ({
+    ...review,
+    id: review._id,
+    name: review.customerName,
+    product: product.name,
+  }))
 
   function handleAdd() {
     addItem(product, quantity)
@@ -70,9 +98,38 @@ export default function ProductPage() {
     <PageContainer className="mt-16 pb-0 pt-0"><ProductUsage product={product}/></PageContainer>
     <PageContainer className="mt-16 pb-0 pt-0">
       <section id="product-reviews" aria-labelledby="product-reviews-title" className="mx-auto max-w-300 scroll-mt-28">
-        <h2 id="product-reviews-title" className="mb-6 font-serif text-[28px] font-normal">What customers say</h2>
-        {approvedReviews.some((review) => review.isDemo) && <p className="-mt-4 mb-5 text-xs text-ink-soft">Reviews of customers.</p>}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {displayReviews.length > 0 ? <div className="review-coverflow relative left-1/2 w-screen -translate-x-1/2 overflow-hidden py-16" aria-label="Customer reviews">
+          <Reveal className="mx-auto mb-6 max-w-[1200px] px-5 text-center">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-rose">From our customer community</p>
+            <h2 id="product-reviews-title" className="mt-2 font-serif text-[34px] font-normal">What our customers say</h2>
+          </Reveal>
+          <Swiper
+            onSwiper={(swiper) => { swiperRef.current = swiper }}
+            modules={[EffectCoverflow, Autoplay, Pagination]}
+            effect="coverflow" grabCursor centeredSlides loop speed={620}
+            autoplay={{ delay: 3000, disableOnInteraction: false, pauseOnMouseEnter: true }}
+            pagination={{ clickable: true }} slidesPerView={1.1}
+            coverflowEffect={{ rotate: 3, stretch: 12, depth: 110, scale: 0.92, modifier: 1, slideShadows: false }}
+            breakpoints={{ 640: { slidesPerView: 1.9 }, 1024: { slidesPerView: 2.8 }, 1440: { slidesPerView: 3.3 } }}
+          >
+            {displayReviews.map((review) => <SwiperSlide key={review.id} className="!h-auto px-1.5 py-5">
+              <figure
+                role="button" tabIndex={0} aria-label={`Read full review by ${review.name}`}
+                onClick={() => setSelectedReview(review)}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setSelectedReview(review) } }}
+                className="review-card flex h-full min-h-[250px] cursor-pointer flex-col overflow-hidden rounded-[22px] border border-line bg-cream transition-all duration-300 sm:min-h-[260px]"
+              >
+                <div className="flex flex-1 flex-col p-7">
+                  <span className="text-[15px] tracking-[0.12em] text-gold" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}<span className="text-line">{'★'.repeat(5 - review.rating)}</span></span>
+                  <blockquote className="my-3.5 line-clamp-4 flex-1 text-[14.5px] leading-relaxed">“{review.text}”</blockquote>
+                  <figcaption className="text-[13px] text-ink-soft"><span className="font-medium text-ink">{review.name}</span><span className="mt-1 block text-gold">{review.product}</span></figcaption>
+                  <span className="mt-3 text-[12px] font-medium text-rose">Read full review →{getReviewPhotos(review).length > 0 && <span className="ml-1.5 text-ink-soft">· {getReviewPhotos(review).length > 1 ? `${getReviewPhotos(review).length} photos` : 'includes a photo'}</span>}</span>
+                </div>
+              </figure>
+            </SwiperSlide>)}
+          </Swiper>
+        </div> : <h2 id="product-reviews-title" className="mb-6 font-serif text-[28px] font-normal">What customers say</h2>}
+        {(myReviews[product.id] || []).length > 0 && <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {(myReviews[product.id] || []).map((review, index) => <article key={`mine-${index}`} className="rounded-[22px] border border-rose/30 bg-cream p-6">
             <p className="text-[14px] tracking-[0.12em] text-gold" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}<span className="text-line">{'★'.repeat(5 - review.rating)}</span></p>
             {review.title && <p className="mt-2 text-[14.5px] font-medium">{review.title}</p>}
@@ -80,17 +137,19 @@ export default function ProductPage() {
             <ReviewPhotos review={review} name={review.name} className="mb-3" />
             <p className="text-[13px] text-ink-soft">{review.name} · <span className="text-rose">Pending approval</span></p>
           </article>)}
-          {approvedReviews.map((review) => <article key={review._id} className="rounded-[22px] border border-line bg-cream p-6">
-            <p className="text-[14px] tracking-[0.12em] text-gold" aria-label={`${review.rating} out of 5 stars`}>{'★'.repeat(review.rating)}{review.rating < 5 && <span className="text-line">{'★'.repeat(5 - review.rating)}</span>}</p>
-            {review.title && <p className="mt-2 font-medium">{review.title}</p>}
-            <p className="my-3 text-[14.5px] leading-relaxed text-ink">“{review.text}”</p>
-            <ReviewPhotos review={review} name={review.customerName} className="mb-3" />
-            <p className="text-[13px] text-ink-soft">{review.customerName}</p>
-          </article>)}
-        </div>
+        </div>}
         <ProductReviewForm key={product.id} product={product} autoOpen={searchParams.get('review') === '1'} onSubmit={(review) => setMyReviews((current) => ({ ...current, [product.id]: [review, ...(current[product.id] || [])] }))}/>
       </section>
     </PageContainer>
+    {selectedReview && <div className="fixed inset-0 z-[200] flex items-center justify-center bg-ink/50 p-4 backdrop-blur-sm" onClick={() => setSelectedReview(null)}>
+      <article role="dialog" aria-modal="true" aria-label={`Review by ${selectedReview.name}`} className="relative w-full max-w-[560px] rounded-3xl border border-line bg-cream p-7 shadow-2xl sm:p-9" onClick={(event) => event.stopPropagation()}>
+        <button type="button" onClick={() => setSelectedReview(null)} aria-label="Close review" className="absolute right-4 top-3 text-2xl text-ink-soft hover:text-ink">×</button>
+        <span className="text-[15px] tracking-[0.12em] text-gold" aria-label={`${selectedReview.rating} out of 5 stars`}>{'★'.repeat(selectedReview.rating)}<span className="text-line">{'★'.repeat(5 - selectedReview.rating)}</span></span>
+        <blockquote className="my-5 text-[16px] leading-[1.8]">“{selectedReview.text}”</blockquote>
+        <ReviewPhotos review={selectedReview} name={selectedReview.name} size="size-28 sm:size-36" className="mb-5" />
+        <p className="text-sm text-ink-soft"><span className="font-medium text-ink">{selectedReview.name}</span><span className="mt-1 block text-gold">{selectedReview.product}</span></p>
+      </article>
+    </div>}
     {related.length > 0 && <PageContainer className="mt-16 max-w-300 pb-14 pt-0"><h2 className="mb-6 font-serif text-[28px] font-normal">Complete the ritual</h2><ProductGrid products={related}/></PageContainer>}
   </>
 }
